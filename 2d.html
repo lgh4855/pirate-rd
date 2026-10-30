@@ -47,12 +47,25 @@ h1 span { color: var(--gold); }
 .howto { width: 100%; text-align: left; }
 .howto summary { cursor: pointer; color: var(--muted); font-size: 13px; text-align: center; }
 .howto ul { margin-top: 8px !important; }
+.prof { width: 100%; text-align: left; display: grid; gap: 4px; padding: 10px; border-radius: 10px; background: rgba(0,0,0,0.18); border: 1px solid rgba(255,255,255,0.14); }
+.prof-top { display: flex; gap: 8px; align-items: center; }
+.prof-top input { flex: 1; min-width: 0; padding: 7px 10px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.18); background: #0b1620; color: var(--ink); font: inherit; font-weight: 700; }
+.prof small { color: var(--muted); font-size: 12px; }
+.ttl { display: inline-block; font-style: normal; font-size: 12px; font-weight: 800; padding: 2px 8px; border-radius: 99px; color: #0b1620; background: var(--c, #9fb3c0); white-space: nowrap; }
+.pid { font-size: 12px; color: var(--muted); font-family: ui-monospace, monospace; }
+.prof-move summary { cursor: pointer; font-size: 12px; color: var(--muted); }
+.prof-move { display: grid; gap: 6px; }
+.prof-move input { width: 100%; margin-top: 6px; padding: 7px 10px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.18); background: #0b1620; color: var(--ink); font: 12px ui-monospace, monospace; }
+.prof-btns { display: flex; gap: 6px; margin: 6px 0 4px; }
+.prof-btns button { padding: 5px 10px; font-size: 12px; }
+.mp-lobby li .ttl { font-size: 11px; padding: 1px 7px; }
 .mp { width: 100%; text-align: left; border: 1px solid rgba(255,255,255,0.14); border-radius: 10px; padding: 10px; display: grid; gap: 8px; background: rgba(0,0,0,0.18); }
 .mp-head { display: flex; justify-content: space-between; gap: 8px; align-items: baseline; flex-wrap: wrap; }
 .mp-head span { font-size: 12px; color: var(--muted); }
 .mp-head span.warn { color: #ffb08a; }
 .mp.off .mp-form { opacity: .4; pointer-events: none; }
 .mp-form { display: grid; grid-template-columns: 1fr auto; gap: 6px; }
+.mp-form .mp-create { grid-column: 1 / -1; }
 .mp-form input { min-width: 0; padding: 8px 10px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.18); background: #0b1620; color: var(--ink); font: inherit; }
 .mp-create { background: var(--gold) !important; color: #0b1620 !important; font-weight: 700; }
 .mp-code { font-size: 13px; display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
@@ -321,11 +334,19 @@ canvas.locked { cursor: none; }
             <li><b>조합</b> 흔함→안흔함→희귀함→전설→히든→영원→불멸→초월. 영원 이상은 나무·골드도 필요. 물뎀은 방어력, 마뎀은 마법 저항에 막힘</li>
             <li><b>패배</b> 라인 몬스터 70마리 이상이면 데스 카운트 감소(10→0), 보스 60초 제한</li>
           </ul></details>
+          <div class="prof" id="prof">
+            <div class="prof-top"><span class="ttl" id="profTitle">견습 선원</span><input id="profNick" placeholder="닉네임 (고정)" maxlength="10" autocomplete="off"><span class="pid" id="profId"></span></div>
+            <small id="profInfo"></small>
+            <details class="prof-move"><summary>다른 기기로 옮기기</summary>
+              <input id="profCodeBox" placeholder="프로필 코드" autocomplete="off">
+              <div class="prof-btns"><button id="profExport">내 코드 복사</button><button id="profImport">코드 불러오기</button></div>
+              <small id="profMsg">클리어 기록은 이 기기에 저장돼요. 다른 기기에서도 이어서 하려면 코드를 옮기세요.</small>
+            </details>
+          </div>
           <div class="diffs" id="diffs" role="group" aria-label="난이도"></div>
           <div class="mp" id="mpBox">
             <div class="mp-head"><b>친구와 실시간으로</b><span id="mpStatus">확인 중…</span></div>
             <div id="mpForm" class="mp-form">
-              <input id="mpNick" placeholder="닉네임" maxlength="10" autocomplete="off">
               <button id="mpCreate" class="mp-create">방 만들기</button>
               <input id="mpCode" placeholder="방 코드" maxlength="8" autocomplete="off" autocapitalize="characters">
               <button id="mpJoin">참가</button>
@@ -2778,7 +2799,7 @@ window.RENDER = window.RENDER2D;
     $('mMon').style.background = r > 0.75 ? 'var(--danger)' : r > 0.5 ? 'var(--gold)' : 'var(--good)';
     const play = S.phase === 'play';
     $('selSummon').setAttribute('aria-pressed', selB === 'summon'); $('selUpgrade').setAttribute('aria-pressed', selB === 'upgrade'); $('selGamble').setAttribute('aria-pressed', selB === 'gamble');
-    const DF0 = CFG.diffs[S.diff || 0]; $('diffTag').innerHTML = `난이도 <b style="color:${DF0.color}">${DF0.name}</b>`;
+    const DF0 = CFG.diffs[S.diff || 0]; const MT = titleOf(myClears()); $('diffTag').innerHTML = `난이도 <b style="color:${DF0.color}">${DF0.name}</b> · 칭호 <b style="color:${MT.color}">${MT.name}</b>`;
     $('upSum').textContent = `하급 Lv ${pl.up[0]} · 상급 Lv ${pl.up[1]}`;
     const g = Math.round((RD.globalAtk(S, ME) - 1) * 100);
     $('buffs').textContent = [g ? `전체 공격력 +${g}%` : '', pl.rally.t > 0 ? `전체 공속 +${Math.round((pl.rally.mul - 1) * 100)}% (${pl.rally.t.toFixed(0)}초)` : ''].filter(Boolean).join(' · ');
@@ -3054,6 +3075,69 @@ window.RENDER = window.RENDER2D;
     ctx.restore();
   }
 
+  // ---------- 고정 아이디 · 칭호 (이 기기에 저장, 10회 클리어마다 승급) ----------
+  const TITLES = [['견습 선원', '#9fb3c0'], ['갑판원', '#c9d4de'], ['항해사', '#4aa8ff'], ['갑판장', '#59d6a4'], ['일등 항해사', '#b67cff'], ['선장', '#ffa63d'],
+    ['함장', '#ff8a5a'], ['제독', '#ff4f7b'], ['대제독', '#2fe0c0'], ['바다의 전설', '#c6ff3a'], ['해적왕', '#fff3a8']];
+  function titleOf(n) {
+    n = Math.max(0, Math.min(99999, n | 0));
+    const k = Math.min(TITLES.length - 1, Math.floor(n / 10)), extra = n >= 110 ? Math.floor((n - 100) / 10) : 0;
+    return { k, name: TITLES[k][0] + (extra ? ` ★${extra}` : ''), color: TITLES[k][1], next: 10 - (n % 10), nextName: k < TITLES.length - 1 ? TITLES[k + 1][0] : TITLES[k][0] + ' ★' + (extra + 1) };
+  }
+  const newPid = () => { const A = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; let s = ''; for (let i = 0; i < 5; i++) s += A[Math.floor(Math.random() * A.length)]; return s; };
+  function loadProf() {
+    let p = null; try { p = JSON.parse(localStorage.getItem('rd_prof') || 'null'); } catch (e) {}
+    if (!p || typeof p.id !== 'string') { let nick = ''; try { nick = localStorage.getItem('rd_nick') || ''; } catch (e) {} p = { id: newPid(), nick, clears: [0, 0, 0], last: '' }; }
+    if (!Array.isArray(p.clears)) p.clears = [0, 0, 0];
+    p.clears = [0, 1, 2].map(i => Math.max(0, p.clears[i] | 0));
+    return p;
+  }
+  const PROF = loadProf();
+  const saveProf = () => { try { localStorage.setItem('rd_prof', JSON.stringify(PROF)); } catch (e) {} };
+  saveProf();
+  const myClears = () => PROF.clears[0] + PROF.clears[1] + PROF.clears[2];
+  const tagName = (nick, clears) => `[${titleOf(clears).name}] ${nick}`;
+  function renderProf() {
+    const el = document.getElementById('prof'); if (!el) return;
+    const n = myClears(), t = titleOf(n);
+    const tt = document.getElementById('profTitle'); tt.textContent = t.name; tt.style.setProperty('--c', t.color);
+    document.getElementById('profId').textContent = '#' + PROF.id;
+    document.getElementById('profInfo').textContent = `클리어 ${n}회 (노말 ${PROF.clears[0]} · 지옥 ${PROF.clears[1]} · 악몽 ${PROF.clears[2]}) · ${t.nextName}까지 ${t.next}회`;
+    const nk = document.getElementById('profNick'); if (document.activeElement !== nk) nk.value = PROF.nick;
+  }
+  function profWire() {
+    const nk = document.getElementById('profNick'); if (!nk) return;
+    nk.addEventListener('keydown', (e) => e.stopPropagation());
+    nk.addEventListener('change', () => { PROF.nick = cleanNick(nk.value); saveProf(); renderProf(); });
+    document.getElementById('profExport').onclick = () => {
+      const code = btoa(unescape(encodeURIComponent(JSON.stringify({ v: 1, id: PROF.id, nick: PROF.nick, clears: PROF.clears }))));
+      const box = document.getElementById('profCodeBox'); box.value = code; box.select();
+      try { navigator.clipboard.writeText(code); document.getElementById('profMsg').textContent = '프로필 코드를 복사했어요. 다른 기기에서 불러오세요.'; } catch (e) { document.getElementById('profMsg').textContent = '위 코드를 복사해서 다른 기기에서 불러오세요.'; }
+    };
+    document.getElementById('profImport').onclick = () => {
+      const msg = document.getElementById('profMsg');
+      try {
+        const o = JSON.parse(decodeURIComponent(escape(atob(document.getElementById('profCodeBox').value.trim()))));
+        if (!o || typeof o.id !== 'string' || !Array.isArray(o.clears)) throw 0;
+        PROF.id = String(o.id).replace(/[^A-Z0-9]/g, '').slice(0, 8) || PROF.id; PROF.nick = cleanNick(o.nick);
+        PROF.clears = [0, 1, 2].map(i => Math.max(PROF.clears[i], Math.max(0, o.clears[i] | 0))); saveProf(); renderProf();
+        msg.textContent = '불러왔어요!';
+      } catch (e) { msg.textContent = '코드가 올바르지 않아요.'; }
+    };
+    document.getElementById('profCodeBox').addEventListener('keydown', (e) => e.stopPropagation());
+    renderProf();
+  }
+  function countClear() { // 이긴 판을 한 번만 셈
+    if (S.phase !== 'won' || NET.spectator || !S.players[ME] || !S.players[ME].alive) return null;
+    const key = S.seed + ':' + (NET.on && NET.game ? NET.game.epoch : 's') + ':' + S.diff;
+    if (PROF.last === key) return null;
+    const before = titleOf(myClears());
+    PROF.clears[S.diff | 0]++; PROF.last = key; saveProf();
+    const after = titleOf(myClears());
+    if (NET.room) NET.room.presence({ clears: myClears() }).catch(() => {});
+    renderProf();
+    return { before, after, up: after.name !== before.name };
+  }
+
   // ---------- 실시간 멀티플레이 (방장이 시간을 진행, 모두 같은 시뮬레이션) ----------
   // 방장: 명령을 모아 '몇 번째 틱에 실행할지' 정해 15번/초 알림 → 모두가 같은 틱에 같은 명령을 실행
   // 어긋나면(상태 검사 불일치) 방장이 전체 상태를 압축해 다시 보냄. 새로고침한 친구도 이걸로 재참가.
@@ -3075,7 +3159,6 @@ window.RENDER = window.RENDER2D;
   function mpStatus(t, warn) { const e = mpEl('mpStatus'); if (e) { e.textContent = t; e.classList.toggle('warn', !!warn); } }
   async function mpInit() {
     const box = mpEl('mpBox'); if (!box) return;
-    mpEl('mpNick').value = NET.nick;
     let api = null;
     if (window.RDPeerRoom) api = window.RDPeerRoom; // Claude 없이 (P2P)
     else try { api = window.claude && window.claude.use ? await window.claude.use('room') : null; } catch (e) { api = null; }
@@ -3086,8 +3169,8 @@ window.RENDER = window.RENDER2D;
   function randCode() { const A = 'abcdefghjkmnpqrstuvwxyz23456789'; let s = ''; for (let i = 0; i < 4; i++) s += A[Math.floor(Math.random() * A.length)]; return s; }
   async function mpEnter(code, host) {
     if (!NET.api) return;
-    const nick = cleanNick(mpEl('mpNick').value) || ('선원' + Math.floor(Math.random() * 90 + 10));
-    NET.nick = nick; mpEl('mpNick').value = nick; try { localStorage.setItem('rd_nick', nick); } catch (e) {}
+    const nick = cleanNick(mpEl('profNick').value) || PROF.nick || ('선원' + Math.floor(Math.random() * 90 + 10));
+    NET.nick = nick; PROF.nick = nick; saveProf(); renderProf();
     code = String(code || '').toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 8);
     if (!code) { mpStatus('방 코드를 입력하세요.', true); return; }
     try {
@@ -3097,7 +3180,7 @@ window.RENDER = window.RENDER2D;
       NET.room = room; NET.code = code; NET.host = host; NET.order = [];
       NET.unsub.push(room.on('start', onStart), room.on('req', onReq), room.on('tick', onTick), room.on('need', onNeed), room.on('snap', onSnap));
       NET.unsub.push(room.onPeers(onPeers, (e) => mpStatus('연결이 끊겼어요 (' + e.code + ')', true)));
-      await room.presence({ nick, host: host ? true : null, diff: host ? diffSel : null });
+      await room.presence({ nick, pid: PROF.id, clears: myClears(), host: host ? true : null, diff: host ? diffSel : null });
       mpStatus(host ? '방을 만들었어요. 친구에게 방 코드를 알려 주세요.' : '방에 들어왔어요. 방장이 출항하길 기다려요.');
       renderLobby();
     } catch (e) {
@@ -3143,7 +3226,8 @@ window.RENDER = window.RENDER2D;
     mpEl('mpCodeShow').textContent = NET.code.toUpperCase();
     mpEl('mpPlayers').innerHTML = list.map((p, i) => {
       const n = cleanNick(p.presence && p.presence.nick) || '선원';
-      return `<li style="--c:${i < 4 ? PCOLORS[i] : '#8eaab9'}"><b>${i < 4 ? 'P' + (i + 1) : '관전'}</b><span></span>${p.presence && p.presence.host ? '<em>방장</em>' : ''}${p.sameTab ? '<em>나</em>' : ''}</li>`;
+      const t = titleOf(p.presence && p.presence.clears);
+      return `<li style="--c:${i < 4 ? PCOLORS[i] : '#8eaab9'}"><b>${i < 4 ? 'P' + (i + 1) : '관전'}</b><i class="ttl" style="--c:${t.color}">${t.name}</i><span></span>${p.presence && p.presence.host ? '<em>방장</em>' : ''}${p.sameTab ? '<em>나</em>' : ''}</li>`;
     }).join('') || '<li>연결 중…</li>';
     [...mpEl('mpPlayers').querySelectorAll('li span')].forEach((el, i) => { el.textContent = cleanNick(list[i] && list[i].presence && list[i].presence.nick) || '선원'; }); // 이름은 textContent로
     const hd = host && host.presence.diff != null ? host.presence.diff : diffSel;
@@ -3155,15 +3239,16 @@ window.RENDER = window.RENDER2D;
   }
   function mpStart() { // 방장이 출항
     const { list } = lobbyPeople(); const players = list.slice(0, 4);
-    const slots = players.map(p => ({ peer: p.peer, by: p.by, nick: cleanNick(p.presence && p.presence.nick) || '선원' }));
+    const slots = players.map(p => ({ peer: p.peer, by: p.by, pid: String((p.presence && p.presence.pid) || '').slice(0, 8), clears: Math.max(0, (p.presence && p.presence.clears) | 0), nick: cleanNick(p.presence && p.presence.nick) || '선원' }));
     const data = { seed: (Date.now() ^ (Math.random() * 1e9)) >>> 0, diff: diffSel, slots, epoch: Date.now() };
     NET.game = { seed: data.seed, diff: data.diff, slots, epoch: data.epoch };
     NET.room.presence({ game: NET.game, order: NET.order.slice(0, 8), diff: diffSel }).catch(() => {});
     NET.room.emit('start', data).catch(() => {});
     onStart({ data, isMe: true, peer: NET.myPeer });
   }
-  function slotIndex(slots, peer, by, nick) {
+  function slotIndex(slots, peer, by, nick, pid) {
     let i = slots.findIndex(s => s.peer === peer); if (i >= 0) return i;
+    if (pid) { i = slots.findIndex(s => s.pid && s.pid === pid); if (i >= 0) return i; }
     if (by) { i = slots.findIndex(s => s.by && s.by === by); if (i >= 0) return i; }
     return slots.findIndex(s => s.nick === nick);
   }
@@ -3177,7 +3262,7 @@ window.RENDER = window.RENDER2D;
   }
   function beginNetGame(state, tick, cmds) {
     const slots = NET.game.slots;
-    const mi = slotIndex(slots, NET.myPeer, NET.myBy, NET.nick);
+    const mi = slotIndex(slots, NET.myPeer, NET.myBy, NET.nick, PROF.id);
     ME = mi >= 0 ? mi : 0; NET.spectator = mi < 0;
     NET.on = true; NET.tick = tick; NET.conf = tick; NET.known = new Map(); NET.hashes = new Map(); NET.lastTickSent = tick - 99;
     for (const c of cmds) NET.known.set(c[0], c);
@@ -3203,7 +3288,7 @@ window.RENDER = window.RENDER2D;
   function onReq(msg) {
     if (!NET.host || !NET.on || msg.isMe) return;
     const ps = peerList().find(x => x.peer === msg.peer);
-    const p = slotIndex(NET.game.slots, msg.peer, msg.by, cleanNick(ps && ps.presence && ps.presence.nick));
+    const p = slotIndex(NET.game.slots, msg.peer, msg.by, cleanNick(ps && ps.presence && ps.presence.nick), ps && ps.presence && String(ps.presence.pid || '').slice(0, 8));
     if (p < 0) return;
     const a = msg.data && msg.data.a; if (!a || typeof a.type !== 'string') return;
     const clean = JSON.parse(JSON.stringify(a)); clean.p = p;
@@ -3262,7 +3347,7 @@ window.RENDER = window.RENDER2D;
     NET.lastSnap = Date.now();
     // 새로고침한 친구: 자리 정보(peer) 갱신
     const ps = peerList().find(x => x.peer === msg.peer);
-    const i = slotIndex(NET.game.slots, msg.peer, msg.by, cleanNick(ps && ps.presence && ps.presence.nick));
+    const i = slotIndex(NET.game.slots, msg.peer, msg.by, cleanNick(ps && ps.presence && ps.presence.nick), ps && ps.presence && String(ps.presence.pid || '').slice(0, 8));
     if (i >= 0 && NET.game.slots[i].peer !== msg.peer) { NET.game.slots[i] = Object.assign({}, NET.game.slots[i], { peer: msg.peer }); NET.room.presence({ game: NET.game }).catch(() => {}); }
     const body = JSON.stringify({ S: Object.assign({}, S, { events: [] }), tick: NET.tick, cmds: [...NET.known.values()].filter(v => v[1] >= NET.tick), game: NET.game });
     let b64;
@@ -3299,7 +3384,6 @@ window.RENDER = window.RENDER2D;
     mpEl('mpCreate').onclick = () => mpEnter(randCode(), true);
     mpEl('mpJoin').onclick = () => mpEnter(mpEl('mpCode').value, false);
     mpEl('mpCode').addEventListener('keydown', (e) => { if (e.key === 'Enter') mpEnter(mpEl('mpCode').value, false); e.stopPropagation(); });
-    mpEl('mpNick').addEventListener('keydown', (e) => e.stopPropagation());
     mpEl('mpLeave').onclick = () => { mpLeave(); if (NET.on) { NET.on = false; } };
     mpEl('mpCopy').onclick = () => { try { navigator.clipboard.writeText(NET.code.toUpperCase()); mpStatus('방 코드를 복사했어요.'); } catch (e) {} };
   }
@@ -3363,7 +3447,7 @@ window.RENDER = window.RENDER2D;
     if (S) {
       const hl = hoverRecipe ? RD.recipeUnits(S, ME, hoverRecipe, primary() ? primary().id : null) || [] : [];
       const hw = hover && !inMinimap(hover) ? wispAtScreen(hover) : null;
-      R.render({ S, ME, names: NET.on && NET.game ? NET.game.slots.map(s => s.nick) : null, view, dt, rdt, clock, fx, parts, anim: A, selIds, hl, hoverWisp: hw, shake: reduced ? 0 : shake, reduced, ctx, dpr, DF });
+      R.render({ S, ME, names: NET.on && NET.game ? NET.game.slots.map(s => tagName(s.nick, s.clears)) : (PROF.nick ? [tagName(PROF.nick, myClears())] : null), view, dt, rdt, clock, fx, parts, anim: A, selIds, hl, hoverWisp: hw, shake: reduced ? 0 : shake, reduced, ctx, dpr, DF });
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       if (R.overlayBars) drawBars();
       drawTargets(); drawTexts(); drawDrag(); drawScreenHud(); drawMinimap(); drawBanner(running ? rdt : 0); drawEdgeHint(px, py);
@@ -3383,7 +3467,9 @@ window.RENDER = window.RENDER2D;
     if (document.pointerLockElement) document.exitPointerLock?.();
     const won = S.phase === 'won';
     $('ovTitle').textContent = won ? '항해 성공!' : '배가 침몰했습니다';
-    $('ovText').textContent = won ? `40웨이브를 모두 막아냈습니다. 스토리 ${S.storyIdx}개 격파, 처치 ${S.players[ME].kills}마리.` : `${S.lostReason}. ${S.wave}웨이브, 스토리 ${S.storyIdx}개 격파.`;
+    const cc = won ? countClear() : null;
+    $('ovText').textContent = won ? `40웨이브를 모두 막아냈습니다. 스토리 ${S.storyIdx}개 격파, 처치 ${S.players[ME].kills}마리.${cc ? ` 클리어 ${myClears()}회째!${cc.up ? ` 칭호 승급: ${cc.after.name}!` : ` ${cc.after.nextName}까지 ${cc.after.next}회`}` : ''}` : `${S.lostReason}. ${S.wave}웨이브, 스토리 ${S.storyIdx}개 격파.`;
+    if (cc && cc.up) showBanner('승급!', cc.after.color, `새 칭호: ${cc.after.name}`);
     $('ovHow').hidden = true; $('startBtn').textContent = '다시 출항';
     $('ov').hidden = false;
     if (NET.room) { $('ovText').textContent += NET.host ? ' 방장은 다시 출항할 수 있어요.' : ' 방장이 다시 출항하길 기다려요.'; renderLobby(); }
@@ -3396,7 +3482,7 @@ window.RENDER = window.RENDER2D;
   window.__stress = (n = 200) => { if (!S) return; const G = GEO[ME], types = Object.keys(UNITS); for (let k = 0; k < n; k++) { const t = types[k % types.length]; S.units.push({ id: 50000 + S.nextId++, owner: ME, type: t, x: G.deck.x0 + 20 + (k * 37) % (G.deck.x1 - G.deck.x0 - 40), y: G.deck.y0 + 20 + (k * 53) % (G.deck.y1 - G.deck.y0 - 40), tx: 0, ty: 0, ox: 0, oy: 0, order: 'idle', cd: 0, rapidT: 0, rapidMul: 1, moving: false, face: 1 }); } };
   window.claude?.hot?.snapshot?.(() => ({ S, selIds, started, view: { x: view.x, y: view.y, z: view.z } }));
   function boot(data) {
-    renderDiffs(); mpWire(); mpInit(); installInit();
+    renderDiffs(); profWire(); mpWire(); mpInit(); installInit();
     if (data && data.S && data.S.players) {
       S = data.S; selIds = data.selIds || []; started = data.started; if (data.view) Object.assign(view, data.view); zoomAt(view.z);
       if (started) $('ov').hidden = true; if (S.phase === 'won' || S.phase === 'lost') endGame();
