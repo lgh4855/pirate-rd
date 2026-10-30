@@ -1,0 +1,13 @@
+{
+  "name": "해적선 랜덤 디펜스",
+  "short_name": "해적선 RD",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#0b202c",
+  "theme_color": "#0b202c",
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png" }
+  ]
+}
