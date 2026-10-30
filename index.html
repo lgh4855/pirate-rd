@@ -4046,6 +4046,20 @@ window.RENDER = window.RENDER2D;
     if (ios) show('ios'); else if (android) show('android');
   }
 
+  // 방장 탭이 뒤로 가도 게임이 멈추지 않게: 숨겨진 동안 작업자(Worker) 타이머로 진행
+  (() => {
+    let w = null, lastBg = 0;
+    try { w = new Worker(URL.createObjectURL(new Blob(['setInterval(() => postMessage(0), 40)'], { type: 'text/javascript' }))); } catch (e) { w = null; }
+    if (!w) return;
+    w.onmessage = () => {
+      const now = performance.now();
+      if (!(document.hidden && NET.on && NET.host && S && S.phase === 'play' && started)) { lastBg = now; return; }
+      const dt = Math.min(0.25, (now - (lastBg || now)) / 1000); lastBg = now;
+      netFrame(dt); fx.length = 0; parts.length = 0; texts.length = 0; // 화면은 안 그림
+      if (S.phase !== 'play') endGame();
+    };
+  })();
+
   // ---------- 루프 ----------
   let fpsT = 0, fpsN = 0, fps = 0;
   function frame(now) {
