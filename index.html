@@ -1,4 +1,4 @@
-<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
 <link rel="manifest" href="manifest.json"><link rel="apple-touch-icon" href="apple-touch-icon.png"><link rel="icon" href="icon-192.png">
 <script>window.__bip=null;addEventListener('beforeinstallprompt',function(e){e.preventDefault();window.__bip=e;dispatchEvent(new Event('rd-bip'))});if('serviceWorker' in navigator&&location.protocol==='https:')addEventListener('load',function(){navigator.serviceWorker.register('sw.js').catch(function(){})});</script>
 <meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"><meta name="apple-mobile-web-app-title" content="해적선 RD"><meta name="theme-color" content="#0b202c">
@@ -483,6 +483,10 @@ html.rot body.m #mstat:not([hidden]) { width: min(calc(var(--rw) * 0.4), 176px);
 #mbPop .mr-top button { padding: 3px 9px; font-size: 11px; }
 #mbPop .mr-top button[data-a=recipe]:not(:disabled) { background: var(--gold); color: #0b1620; border-color: var(--gold); }
 #mbPop .mi { font-size: 9.5px; }
+
+/* 브라우저 두 번 탭 확대·페이지 핀치 확대 끄기 (스크롤은 그대로) */
+html { touch-action: pan-x pan-y; -webkit-text-size-adjust: 100%; }
+button, .mb, .mb-it { touch-action: manipulation; }
 </style>
 </head><body>
 <script>
@@ -3278,6 +3282,18 @@ window.RENDER = window.RENDER2D;
   const { WORLD, GEO, STORY, PCOLORS, PNAMES, CFG, TIERS, UNITS, RECIPES, STORIES } = RD;
   let VW = 720, VH = 480; // 휴대폰(모바일 모드)에서는 화면 비율에 맞춰 바뀜
   let MOBILE = false;
+  // 휴대폰 브라우저의 페이지 확대(두 번 탭·두 손가락)를 막고, 게임판 안의 줌만 쓰게 함
+  (() => {
+    try {
+      let m = document.querySelector('meta[name=viewport]');
+      if (!m) { m = document.createElement('meta'); m.name = 'viewport'; document.head.appendChild(m); }
+      m.content = 'width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover';
+    } catch (e) {}
+    const stop = (e) => e.preventDefault();
+    ['gesturestart', 'gesturechange', 'gestureend'].forEach(t => document.addEventListener(t, stop, { passive: false }));
+    document.addEventListener('dblclick', (e) => { if (!e.target.closest('input, textarea')) e.preventDefault(); }, { passive: false });
+    document.addEventListener('touchmove', (e) => { if (e.touches.length > 1 && !e.target.closest('canvas')) e.preventDefault(); }, { passive: false });
+  })();
   const MM = { w: 172, h: 99, x: VW - 172 - 8, y: VH - 99 - 8 };
   const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
   let ME = 0;
