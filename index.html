@@ -1569,8 +1569,21 @@ const RD = (() => {
   function onPad(u) { const pd = PADS[u.owner], pp = zoneOf(u) === 'deck' ? pd.deck : pd.story; return sq(u.x - pp.x) + sq(u.y - pp.y) <= 16 * 16; }
 
   // ---- 진행 ----
+  // 흔함 말고 다른 등급 위습(무작위)은 받자마자 바로 선원으로 바뀜 (위습 제단 앞에 등장)
+  function flushWisps(s) {
+    s.players.forEach((pl, p) => {
+      if (!pl.alive) return;
+      for (let t = 1; t < pl.wisps.length; t++) while (pl.wisps[t] > 0) {
+        pl.wisps[t]--;
+        const st = STATIONS[p].wisp, g = GEO[p], k = s.nextId % 5;
+        const u = addUnit(s, p, pickUnit(s, t), st.x - 40 + k * 20, st.y + (g.cy > st.y ? 46 : -46));
+        s.events.push({ e: 'wispUsed', p, id: u.id, tier: t, auto: true });
+      }
+    });
+  }
   function step(s, dt) {
     if (s.phase !== 'play') return;
+    flushWisps(s);
     s.t += dt; s.waveT += dt;
     const wi = waveInfo(s.wave), boss = wi.kind === 'boss';
     for (const pl of s.players) if (pl.rally.t > 0) { pl.rally.t -= dt; if (pl.rally.t <= 0) pl.rally.mul = 1; }
@@ -3936,7 +3949,7 @@ window.RENDER = window.RENDER2D;
         case 'pship': if (ev.p === ME) { showBanner('해적선 합류!', '#d8a060', '해적선으로 히든 배를 만들 수 있어요 (조합표 ⛵배 탭)'); say('이번 라운드에 해적선이 합류했어요!'); } break;
         case 'rewardUnit': if (ev.p === ME) { const u = RD.unitById(S, ev.id); if (u) { ring(u.x, u.y, TIERS[UNITS[ev.type].tier].color, 70, 0.8, true); } say(`스토리 보상: ${UNITS[ev.type].name}이(가) 합류했어요!`); } break;
         case 'rewardPick': if (ev.p === ME) say(`스토리 보상: ${TIERS[ev.tier].name} 위습을 받았어요!`); break;
-        case 'wispUsed': if (ev.p === ME) { const u = RD.unitById(S, ev.id); if (u) { fx.push({ k: 'burst', x: u.x, y: u.y, c: TIERS[ev.tier].color, t: 0.6, T: 0.6 }); ring(u.x, u.y, TIERS[ev.tier].color, 60, 0.6, true); say(`${TIERS[ev.tier].name} 위습 → ${UNITS[u.type].name}${onScreen(u.x, u.y) ? '' : ' (내 갑판에 등장 · Backspace로 이동)'}`); } } break;
+        case 'wispUsed': if (ev.p === ME) { const u = RD.unitById(S, ev.id); if (u && ev.auto) say(`${TIERS[ev.tier].name} 위습 → ${UNITS[u.type].name} 바로 합류!`); if (u) { fx.push({ k: 'burst', x: u.x, y: u.y, c: TIERS[ev.tier].color, t: 0.6, T: 0.6 }); ring(u.x, u.y, TIERS[ev.tier].color, 60, 0.6, true); say(`${TIERS[ev.tier].name} 위습 → ${UNITS[u.type].name}${onScreen(u.x, u.y) ? '' : ' (내 갑판에 등장 · Backspace로 이동)'}`); } } break;
         case 'drawn': if (ev.p === ME) { const u = RD.unitById(S, ev.id), d = UNITS[ev.type]; if (u) { fx.push({ k: 'burst', x: u.x, y: u.y, c: TIERS[d.tier].color, t: 0.9, T: 0.9 }); shake = 0.3; } showBanner('랜덤전용 획득', TIERS[d.tier].color, `${TIERS[d.tier].name} ${d.name}`); say(`랜덤전용 뽑기 → ${TIERS[d.tier].name} ${d.name}`); } break;
         case 'teleport': ring(ev.x0, ev.y0, '#bff0ff', 26, 0.4, true); ring(ev.x1, ev.y1, '#bff0ff', 30, 0.5, true); spark(ev.x1, ev.y1, '#bff0ff', 6); break;
         case 'consume': fx.push({ k: 'proj', st: 'orb', x0: ev.x, y0: ev.y, x1: ev.tx, y1: ev.ty, c: '#f4bf3c', t: 0.35, T: 0.35, tier: 0 }); break;
@@ -4039,7 +4052,7 @@ window.RENDER = window.RENDER2D;
   function stationHtml(k, pl, play) {
     if (k === 'wisp') {
       const W = pl.wisps, rows = W.map((n, t) => `<div class="gm"><div class="gm-top"><b style="color:${TIERS[t].color}">${TIERS[t].name} 위습 ×${n}</b>${t ? `<button class="bact" data-a="altar" data-t="${t}" ${n && play ? '' : 'disabled'}>무작위 받기</button>` : ''}</div>${t ? '' : `<div class="wp-pc">${RD.BY_TIER[0].map(u => `<button class="bact" data-a="altar" data-t="0" data-type="${u}" ${n && play ? '' : 'disabled'}>${UNITS[u].name}</button>`).join('')}</div>`}</div>`).join('');
-      return `<div class="sel"><div class="badge bld" style="background:#5aa8d8">✨</div><div><div class="tier" style="color:#bfe8ff">갑판 건물</div><div class="name">위습 제단</div></div></div>${rows}<div class="empty">흔함 위습은 원하는 흔함 선원을 골라서 받고, 나머지는 그 등급에서 무작위로 받아요. F5로 이 건물을 고릅니다.</div>`;
+      return `<div class="sel"><div class="badge bld" style="background:#5aa8d8">✨</div><div><div class="tier" style="color:#bfe8ff">갑판 건물</div><div class="name">위습 제단</div></div></div>${rows}<div class="empty">흔함 위습은 원하는 흔함 선원을 골라서 받아요. 다른 등급 위습은 받자마자 그 등급의 무작위 선원으로 바로 바뀌어요. F5로 이 건물을 고릅니다.</div>`;
     }
     if (k === 'ggold' || k === 'gunit') {
       const sec = (kind, list, keys, title, desc) => `<h3 class="gm-h">${title}</h3><small class="gm-d">${desc}</small>` + list.map((G, t) => {
@@ -4773,7 +4786,7 @@ window.RENDER = window.RENDER2D;
         const W = pl.wisps, left = W.map((n, t) => n ? `<span style="color:${TIERS[t].color}">${TIERS[t].name} ${n}</span>` : '').filter(Boolean).join(' · ') || '없음';
         const picks = RD.BY_TIER[0].map(t => mb('altar', UNITS[t].name, '흔함 선택', { attrs: ` data-t="0" data-type="${t}"`, hot: W[0] > 0, off: !play || !W[0] })).join('');
         const others = W.map((n, t) => t && n ? mb('altar', TIERS[t].name + ' 위습', '×' + n + ' · 무작위', { attrs: ` data-t="${t}"`, hot: true, off: !play }) : '').join('');
-        return `<div class="mc-h">✨ 위습 제단 <small>남은 위습: ${left}</small></div><div class="mc-g mc-g2">${picks}${others}</div>${W[0] ? '' : '<small class="mc-none">흔함 위습이 생기면 원하는 흔함 선원을 골라 받을 수 있어요</small>'}`;
+        return `<div class="mc-h">✨ 위습 제단 <small>남은 위습: ${left}</small></div><div class="mc-g mc-g2">${picks}${others}</div>${W[0] ? '' : '<small class="mc-none">흔함 위습이 생기면 원하는 흔함 선원을 골라 받을 수 있어요. 다른 등급 위습은 받는 즉시 선원으로 바뀌어요.</small>'}`;
       }
       if (selB === 'ggold') return `<div class="mc-h">💰 골드 도박장 <small>골드를 걸고 골드를 받아요</small></div><div class="mc-g">${gb('gold', CFG.gambleGold)}</div>`;
       return `<div class="mc-h">🎲 유닛 도박장 <small>골드+나무를 걸고 선원을 받아요</small></div><div class="mc-g">${gb('unit', CFG.gambleUnit)}</div>`;
