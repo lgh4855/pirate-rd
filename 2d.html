@@ -531,6 +531,10 @@ button, .mb, .mb-it { touch-action: manipulation; }
 #mrec .mr-ab { font-size: 9px; }
 #mrec .tg { font-size: 8.5px; line-height: 12px; padding: 0 3px; }
 .ms-tags { margin: 2px 0; }
+
+/* 조합법 칸: 길면 손가락으로 위아래 스크롤 */
+#mrec:not([hidden]) { pointer-events: auto; overflow-y: auto; overscroll-behavior: contain; touch-action: pan-y; -webkit-overflow-scrolling: touch; }
+#mrec .mrecs, #mrec .mrec { touch-action: pan-y; }
 </style>
 </head><body>
 <div class="wrap">
@@ -3961,7 +3965,8 @@ window.RENDER = window.RENDER2D;
 
 
   // ---------- 모바일: 전체 화면 + 상단 정보줄 + 오른쪽 아래 버튼판 (원랜디식) ----------
-  let mcardSig = '', mlogT = 0;
+  let mcardSig = '', mlogT = 0, recTouch = false; // 조합법 칸을 손가락으로 만지는 동안엔 내용을 다시 그리지 않음 (스크롤 끊김 방지)
+  { const rp = document.getElementById('mrec'); if (rp) { rp.addEventListener('touchstart', () => { recTouch = true; }, { passive: true }); const end = () => setTimeout(() => { recTouch = false; }, 400); rp.addEventListener('touchend', end, { passive: true }); rp.addEventListener('touchcancel', end, { passive: true }); } }
   const mb = (a, label, sub, opt = {}) => `<button class="mb${opt.hot ? ' hot' : ''}${opt.wide ? ' wide' : ''}" data-a="${a}"${opt.attrs || ''} ${opt.off ? 'disabled' : ''}><b>${label}</b>${sub ? `<small>${sub}</small>` : ''}</button>`;
   function mCardHtml() {
     const pl = me(), play = S.phase === 'play' && started;
@@ -4048,9 +4053,9 @@ window.RENDER = window.RENDER2D;
       if (h !== mcardSig) {
         let st = '', rest = h; if (h.includes('<!--CARD-->')) [st, rest] = h.split('<!--CARD-->');
         const [a, b = ''] = rest.split('<!--REC-->'); card.innerHTML = a;
-        const rp = document.getElementById('mrec'); if (rp) { rp.innerHTML = b; rp.dataset.has = b ? '1' : ''; }
+        const rp = document.getElementById('mrec'); if (rp && !recTouch) { const keep = rp.dataset.sig === b ? null : rp.scrollTop; if (rp.dataset.sig !== b) { rp.innerHTML = b; rp.dataset.sig = b; if (keep != null && b.split('조합법 · ')[1]?.slice(0, 12) === rp.dataset.head) rp.scrollTop = keep; else rp.scrollTop = 0; rp.dataset.head = (b.split('조합법 · ')[1] || '').slice(0, 12); } rp.dataset.has = b ? '1' : ''; }
         const sp = document.getElementById('mstat'); if (sp) { sp.innerHTML = st; sp.dataset.has = st ? '1' : ''; }
-        mcardSig = h;
+        if (!recTouch) mcardSig = h;
       }
       const base = !started || !$('ov').hidden;
       card.hidden = base || !card.innerHTML.trim();
