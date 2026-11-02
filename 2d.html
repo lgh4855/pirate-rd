@@ -446,6 +446,43 @@ html.rot body.m #mrec:not([hidden]) { width: min(calc(var(--rw) * 0.44), 196px);
 /* 조합법 패널의 빈 곳은 터치가 게임판으로 통과 (건물·선원 누르기 방해 X) */
 #mrec { pointer-events: none; }
 #mrec button, #mrec .mrec { pointer-events: auto; }
+
+/* ===== 작게: 행동 카드 ===== */
+.mcard:not([hidden]), body.m .mcard:not([hidden]) { width: min(50%, 228px) !important; padding: 5px; border-radius: 10px; bottom: calc(52px + env(safe-area-inset-bottom, 0px)); right: 5px; }
+html.rot body.m .mcard:not([hidden]) { width: min(calc(var(--rw) * 0.5), 228px) !important; }
+.mcard .mc-h { font-size: 11px; margin: 0 2px 4px; }
+.mcard .mc-g { gap: 3px; }
+.mcard .mb { min-height: 36px; font-size: 10.5px; border-radius: 7px; padding: 2px 1px; }
+.mcard .mb small { font-size: 9px; }
+/* ===== 능력치: 왼쪽 위 ===== */
+#mstat[hidden] { display: none; }
+#mstat:not([hidden]) { display: block; position: absolute; z-index: 5; left: 5px; top: calc(52px + env(safe-area-inset-top, 0px)); width: min(40%, 176px); padding: 4px 6px; border-radius: 9px; background: rgba(8,20,30,0.78); border: 1px solid #2a5a7a; pointer-events: none; }
+body:not(.m) #mstat:not([hidden]) { top: 8px; }
+html.rot body.m #mstat:not([hidden]) { width: min(calc(var(--rw) * 0.4), 176px); }
+#mstat .ms-h { font-size: 10.5px; font-weight: 800; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#mstat .dt { font-size: 9px; padding: 0 4px; }
+#mstat .mc-stat { margin: 2px 0 2px; font-size: 9.5px; gap: 1px 7px; }
+#mstat .mc-skill { margin: 0; font-size: 9.5px; line-height: 1.3; }
+/* ===== 맨 아래 조합 막대 ===== */
+#mbar[hidden], #mbPop[hidden] { display: none; }
+#mbar:not([hidden]) { display: block; position: absolute; z-index: 5; left: 0; right: 0; bottom: 0; padding: 3px 4px calc(3px + env(safe-area-inset-bottom, 0px)); background: rgba(6,16,24,0.9); border-top: 1px solid #24465c; }
+.mb-list { display: flex; align-items: center; gap: 3px; overflow-x: auto; overflow-y: hidden; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
+.mb-list::-webkit-scrollbar { display: none; }
+.mb-sep { flex: none; writing-mode: vertical-rl; font-size: 9px; font-weight: 800; padding: 0 1px; margin-left: 3px; letter-spacing: -0.02em; }
+.mb-it { flex: none; position: relative; width: 38px; height: 40px; padding: 0; border-radius: 7px; border: 2px solid color-mix(in srgb, var(--tc) 70%, transparent); background: rgba(255,255,255,0.04); }
+.mb-it i { position: absolute; inset: 1px 1px 9px; background-size: cover; background-position: center 20%; border-radius: 4px; }
+.mb-it small { position: absolute; left: 0; right: 0; bottom: 0; font-size: 8.5px; line-height: 9px; color: #cfe0ea; text-align: center; }
+.mb-it.none { opacity: .45; }
+.mb-it.ok { border-color: var(--gold); box-shadow: 0 0 8px rgba(244,191,60,.7); }
+.mb-it.ok small { color: var(--gold); font-weight: 800; }
+.mb-it.on { outline: 2px solid #fff; outline-offset: 1px; }
+#mbPop:not([hidden]) { display: block; position: absolute; z-index: 7; left: 5px; width: calc(50% - 28px); box-sizing: border-box; bottom: calc(52px + env(safe-area-inset-bottom, 0px)); max-width: 360px; padding: 5px 6px; border-radius: 10px; background: rgba(8,20,30,0.95); border: 1px solid var(--gold); }
+#mbPop .mr-top { gap: 5px; }
+#mbPop .mr-top b { font-size: 12px; }
+#mbPop .mr-top small { font-size: 9.5px; flex: 1; }
+#mbPop .mr-top button { padding: 3px 9px; font-size: 11px; }
+#mbPop .mr-top button[data-a=recipe]:not(:disabled) { background: var(--gold); color: #0b1620; border-color: var(--gold); }
+#mbPop .mi { font-size: 9.5px; }
 </style>
 </head><body>
 <div class="wrap">
@@ -470,6 +507,9 @@ html.rot body.m #mrec:not([hidden]) { width: min(calc(var(--rw) * 0.44), 196px);
       <div class="mlog" id="mlog"></div>
       <div class="mcard" id="mcard" hidden></div>
       <div class="mrecp" id="mrec" hidden></div>
+      <div class="mstat" id="mstat" hidden></div>
+      <div class="mbpop" id="mbPop" hidden></div>
+      <div class="mbar" id="mbar" hidden><div class="mb-list" id="mbList"></div></div>
       <div class="wpick" id="wpick" hidden><div class="wp-card"><div class="wp-head"><b>흔함 위습 · 원하는 선원 고르기</b><button data-a="wpclose" aria-label="닫기">✕</button></div><div class="wp-list"></div></div></div>
       <div class="msheet" id="msheet" hidden>
         <div class="ms-head"><b>📖 조합표</b><button id="msAll">전체 메뉴</button><button id="msClose" aria-label="닫기">✕</button></div>
@@ -2631,7 +2671,7 @@ window.RENDER = window.RENDER2D;
     else hover = null;
   });
   document.addEventListener('pointerlockerror', () => say('마우스 가두기를 쓸 수 없는 환경이에요. 화면 가장자리에 마우스를 대면 이동합니다.'));
-  function placeMinimap() { const small = MOBILE && VW < 600; MM.w = small ? 150 : 172; MM.h = small ? 87 : 99; MM.x = 8; MM.y = VH - MM.h - 8; } // 왼쪽 아래 (오른쪽 아래는 버튼판)
+  function placeMinimap() { const small = MOBILE && VW < 600; MM.w = small ? 120 : 150; MM.h = small ? 70 : 87; MM.x = 6; const bar = document.getElementById('mbar'), bh = bar && !bar.hidden ? bar.offsetHeight : 0, ch = cv.offsetHeight || VH; MM.y = VH - MM.h - 6 - bh * VH / ch; } // 왼쪽 아래 (오른쪽 아래는 버튼판)
   const inMinimap = (p) => p.x >= MM.x && p.x <= MM.x + MM.w && p.y >= MM.y && p.y <= MM.y + MM.h;
   function mmToWorld(p) { return { x: (p.x - MM.x) / MM.w * WORLD.w, y: (p.y - MM.y) / MM.h * WORLD.h }; }
   // 화면 기준으로 고르기: 2D든 3D든 선원이 화면에 보이는 자리를 누르면 선택됨
@@ -2825,6 +2865,8 @@ window.RENDER = window.RENDER2D;
     else if (a === 'bgam') doGamble(b.dataset.k || 'gold', +b.dataset.t);
     else if (a === 'selb') { selectStation(b.dataset.k); }
     else if (a === 'wpick') { document.getElementById('wpick').hidden = true; useWisp(0, pickAt, b.dataset.type); }
+    else if (a === 'bar') { const id = b.dataset.id; barSel = barSel === id ? null : id; barT = 0; barSig = ''; if (!barSel) document.getElementById('mbPop').hidden = true; else barPop(id); }
+    else if (a === 'barx') { barSel = null; barSig = ''; barT = 0; document.getElementById('mbPop').hidden = true; }
     else if (a === 'recfold') { const rp = document.getElementById('mrec'); rp.classList.toggle('fold'); try { localStorage.setItem('rd_recfold', rp.classList.contains('fold') ? '1' : ''); } catch (e) {} }
     else if (a === 'wpclose') { document.getElementById('wpick').hidden = true; }
     else if (a === 'mclear') { selB = null; selIds = []; selMon = null; }
@@ -3798,11 +3840,42 @@ window.RENDER = window.RENDER2D;
         const cost = (TT.wood ? `<i class="mi cost${pl.wood >= TT.wood ? ' ok' : ''}">🪵${TT.wood}</i>` : '') + (TT.gold ? `<i class="mi cost${pl.gold >= TT.gold ? ' ok' : ''}">💰${TT.gold}</i>` : '');
         return `<div class="mrec${r.ok ? ' hot' : ''}"><div class="mr-top"><b style="color:${TT.color}">${r.dd.name}</b><small>${TT.name}</small><button data-a="recipe" data-id="${r.id}" ${r.ok && play ? '' : 'disabled'}>조합</button></div><div class="mr-ing">${ings}${cost}</div></div>`;
       }).join('');
-      return head + stat + `<div class="mc-g">${row1}${row2}</div><!--REC-->` + (row3 ? `<button class="mr-title" data-a="recfold">조합법 · ${d.name}<span>▾</span></button><div class="mrecs">${row3}</div>` : `<button class="mr-title" data-a="recfold">조합법 · ${d.name}<span>▾</span></button><small class="mc-none">이 선원으로 만드는 조합식은 없어요</small>`);
+      return `<div class="ms-h"><span style="color:${T.color}">${T.name}</span> ${d.name} <span class="dt ${d.dtype === 'm' ? 'm' : 'p'}">${d.dtype === 'm' ? '마뎀' : '물뎀'}</span></div>` + stat + '<!--CARD-->' + head + `<div class="mc-g">${row1}${row2}</div><!--REC-->` + (row3 ? `<button class="mr-title" data-a="recfold">조합법 · ${d.name}<span>▾</span></button><div class="mrecs">${row3}</div>` : `<button class="mr-title" data-a="recfold">조합법 · ${d.name}<span>▾</span></button><small class="mc-none">이 선원으로 만드는 조합식은 없어요</small>`);
     }
     const mon = selMon != null ? enemyById(selMon) : null;
     const wisps = pl.wisps.map((n, t) => n ? mb('wisp', TIERS[t].name + ' 위습', '×' + n, { attrs: ` data-t="${t}"`, hot: true, off: !play }) : '').filter(Boolean).slice(0, 3).join('');
     return `<div class="mc-h">${mon ? (mon.kind === 'story' ? STORIES[mon.idx].name : mon.boss ? '보스' : '몬스터') + ` · 체력 ${fmt(Math.max(0, Math.ceil(mon.hp)))}` : '건물 · 보급'}</div><div class="mc-g">${mb('selb', '강화소', '', { attrs: ' data-k="upgrade"' })}${mb('selb', '💰골드 도박', '', { attrs: ' data-k="ggold"' })}${mb('selb', '🎲유닛 도박', '', { attrs: ' data-k="gunit"' })}${wisps}${pl.draws ? mb('draw', '랜덤 뽑기', '×' + pl.draws, { hot: true }) : ''}${mb('mview', '내 라인', '', { attrs: ' data-v="lane"' })}${mb('mview', '스토리존', '', { attrs: ' data-v="story"' })}</div>`;
+  }
+  // ---- 맨 아래 조합 막대 (원랜디처럼): 등급 낮은 것부터 왼쪽에, 지금 가진 재료 수 표시 ----
+  const BAR_IDS = Object.keys(RECIPES).sort((a, b) => UNITS[a].tier - UNITS[b].tier || (UNITS[a].ship ? 1 : 0) - (UNITS[b].ship ? 1 : 0) || RECIPES[a].length - RECIPES[b].length);
+  let barSig = '', barT = 0, barSel = null;
+  function barInfo(id) {
+    const pl = me(), have = RD.recipeHave(S, ME, id), n = have.filter(Boolean).length, T = TIERS[UNITS[id].tier];
+    const ok = n === have.length && !!RD.recipeUnits(S, ME, id) && pl.wood >= (T.wood || 0) && pl.gold >= (T.gold || 0);
+    return { have, n, N: have.length, ok };
+  }
+  function mBar(hide) {
+    const bar = document.getElementById('mbar'); if (!bar) return;
+    if (bar.hidden !== hide) { bar.hidden = hide; placeMinimap(); }
+    if (hide) { const pp = document.getElementById('mbPop'); if (pp) pp.hidden = true; return; }
+    const now = performance.now(); if (now - barT < 300) return; barT = now;
+    let last = -1, html = '';
+    for (const id of BAR_IDS) {
+      const d = UNITS[id], T = TIERS[d.tier], b = barInfo(id);
+      if (d.tier !== last) { last = d.tier; html += `<span class="mb-sep" style="color:${T.color}">${T.name}</span>`; }
+      html += `<button class="mb-it${b.ok ? ' ok' : b.n ? '' : ' none'}${barSel === id ? ' on' : ''}" data-a="bar" data-id="${id}" style="--tc:${T.color}" aria-label="${d.name}"><i style="background-image:url(${pic(id)})"></i><small>${b.n}/${b.N}</small></button>`;
+    }
+    if (html !== barSig) { const L = document.getElementById('mbList'); const sl = L.scrollLeft; L.innerHTML = html; L.scrollLeft = sl; barSig = html; }
+    if (barSel) barPop(barSel);
+  }
+  function barPop(id) {
+    const pp = document.getElementById('mbPop'); if (!pp) return;
+    const d = UNITS[id], T = TIERS[d.tier], pl = me(), b = barInfo(id);
+    const ings = RECIPES[id].map((t, k) => `<i class="mi${b.have[k] ? ' ok' : ''}" style="--tc:${TIERS[UNITS[t].tier].color}">${UNITS[t].name}${b.have[k] ? '✓' : ''}</i>`).join('');
+    const cost = (T.wood ? `<i class="mi cost${pl.wood >= T.wood ? ' ok' : ''}">🪵${T.wood}</i>` : '') + (T.gold ? `<i class="mi cost${pl.gold >= T.gold ? ' ok' : ''}">💰${T.gold}</i>` : '');
+    const h = `<div class="mr-top"><b style="color:${T.color}">${d.name}</b><small>${T.name} · ${d.dtype === 'm' ? '마뎀' : '물뎀'} · ${d.skill.name}</small><button data-a="recipe" data-id="${id}" ${b.ok && S.phase === 'play' ? '' : 'disabled'}>조합</button><button data-a="barx" aria-label="닫기">✕</button></div><div class="mr-ing">${ings}${cost}</div>`;
+    if (pp.dataset.sig !== h) { pp.innerHTML = h; pp.dataset.sig = h; }
+    pp.hidden = false;
   }
   function mHud() {
     if (!S) return;
@@ -3815,9 +3888,17 @@ window.RENDER = window.RENDER2D;
     const card = document.getElementById('mcard');
     if (card) {
       const h = started ? mCardHtml() : '';
-      if (h !== mcardSig) { const [a, b = ''] = h.split('<!--REC-->'); card.innerHTML = a; const rp = document.getElementById('mrec'); if (rp) { rp.innerHTML = b; rp.dataset.has = b ? '1' : ''; } mcardSig = h; }
+      if (h !== mcardSig) {
+        let st = '', rest = h; if (h.includes('<!--CARD-->')) [st, rest] = h.split('<!--CARD-->');
+        const [a, b = ''] = rest.split('<!--REC-->'); card.innerHTML = a;
+        const rp = document.getElementById('mrec'); if (rp) { rp.innerHTML = b; rp.dataset.has = b ? '1' : ''; }
+        const sp = document.getElementById('mstat'); if (sp) { sp.innerHTML = st; sp.dataset.has = st ? '1' : ''; }
+        mcardSig = h;
+      }
       card.hidden = !started || !$('ov').hidden;
       const rp = document.getElementById('mrec'); if (rp) rp.hidden = card.hidden || !rp.dataset.has || document.body.classList.contains('m-menu');
+      const sp = document.getElementById('mstat'); if (sp) sp.hidden = card.hidden || !sp.dataset.has;
+      mBar(card.hidden);
     }
     const hud = document.getElementById('mhud'); if (hud) hud.hidden = !started;
     const lg = document.getElementById('mlog'); if (lg) lg.classList.toggle('show', performance.now() < mlogT);
