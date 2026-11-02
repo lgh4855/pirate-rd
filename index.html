@@ -1819,7 +1819,7 @@ window.FIG2D = (() => {
   function draw(c, type, p) {
     const D = window.DESIGNS[type] || window.DESIGNS.sword, d = RD.UNITS[type];
     const t = p.t || 0, ak = p.ak || 0, lite = p.lite;
-    if (D.ship) { drawShip(c, D, t, ak); return; }
+    if (D.ship) { drawShip(c, D, t, ak, type); return; }
     const rr = (x, y, w, h, r) => { c.beginPath(); c.roundRect(x, y, w, h, r); };
     const fillG = (x0, y0, x1, y1, a, b) => { if (lite) return a; const g = c.createLinearGradient(x0, y0, x1, y1); g.addColorStop(0, a); g.addColorStop(1, b); return g; };
     c.save(); c.lineJoin = 'round'; c.lineCap = 'round'; c.lineWidth = 1.6; c.strokeStyle = ink;
@@ -2009,26 +2009,69 @@ window.FIG2D = (() => {
     }
   }
 
-  // 배 그리기: 발끝(0,0) 기준, 오른쪽이 뱃머리
-  function drawShip(c, D, t, ak) {
+  // 배 그리기: 발끝(0,0) 기준, 오른쪽이 뱃머리. 이름에 맞게 배마다 모양이 다름
+  function drawShip(c, D, t, ak, type) {
     const z = D.size || 1, rock = Math.sin(t * 2.2) * 0.05;
-    c.save(); c.lineJoin = 'round'; c.lineWidth = 1.6; c.strokeStyle = ink; c.rotate(rock); c.scale(z, z);
-    // 돛대 · 돛
-    const ms = D.masts || 2, xs = ms === 3 ? [-9, 1, 10] : [-6, 6];
-    xs.forEach((x, k) => {
-      const h = k === Math.floor(ms / 2) ? 34 : 27;
-      c.fillStyle = '#4a3020'; c.fillRect(x - 1, -h - 6, 2, h);
-      const bil = Math.sin(t * 3 + k) * 1.2;
-      c.fillStyle = D.sail; c.beginPath(); c.moveTo(x - 6, -h - 2); c.quadraticCurveTo(x + bil + 1, -h * 0.65 - 4, x - 6, -12); c.lineTo(x + 6, -12); c.quadraticCurveTo(x + 7 + bil, -h * 0.65 - 4, x + 6, -h - 2); c.closePath(); c.fill(); c.stroke();
-      c.fillStyle = D.trim; c.fillRect(x - 6, -h * 0.6 - 4, 12, 2);
-      if (k === Math.floor(ms / 2)) { c.fillStyle = D.flag; c.beginPath(); c.moveTo(x + 1, -h - 6); c.lineTo(x + 9 + Math.sin(t * 6) * 1.5, -h - 4); c.lineTo(x + 1, -h - 2); c.closePath(); c.fill(); c.stroke(); }
-    });
-    // 선체
-    c.fillStyle = D.hull; c.beginPath(); c.moveTo(-18, -13); c.lineTo(20, -13); c.quadraticCurveTo(17, -2, 9, 0); c.lineTo(-12, 0); c.quadraticCurveTo(-17, -4, -18, -13); c.closePath(); c.fill(); c.stroke();
-    c.fillStyle = D.trim; c.fillRect(-17, -12, 36, 2.4);
-    c.fillStyle = '#111'; for (let k = -10; k <= 10; k += 6) { c.beginPath(); c.arc(k, -7, 1.6, 0, 7); c.fill(); }
-    // 포구 섬광
-    if (ak > 0) { c.fillStyle = `rgba(255,200,90,${ak})`; c.beginPath(); c.arc(23, -7, 4 * ak + 1, 0, 7); c.fill(); }
+    c.save(); c.lineJoin = 'round'; c.lineCap = 'round'; c.lineWidth = 1.6; c.strokeStyle = ink; c.rotate(rock); c.scale(z, z);
+    const P = (pts, fill) => { c.fillStyle = fill; c.beginPath(); pts.forEach(([x, y], k) => k ? c.lineTo(x, y) : c.moveTo(x, y)); c.closePath(); c.fill(); c.stroke(); };
+    const hull = (col, trim, x0 = -18, x1 = 20, top = -13) => { c.fillStyle = col; c.beginPath(); c.moveTo(x0, top); c.lineTo(x1, top); c.quadraticCurveTo(x1 - 3, -2, x1 - 11, 0); c.lineTo(x0 + 6, 0); c.quadraticCurveTo(x0 + 1, -4, x0, top); c.closePath(); c.fill(); c.stroke(); if (trim) { c.fillStyle = trim; c.fillRect(x0 + 1, top + 1, x1 - x0 - 2, 2.4); } };
+    const mast = (x, h) => { c.fillStyle = '#4a3020'; c.fillRect(x - 1, -h - 6, 2, h); };
+    const sail = (x, h, w, col, bil = 0) => { c.fillStyle = col; c.beginPath(); c.moveTo(x - w, -h - 2); c.quadraticCurveTo(x + bil + 1, -h * 0.65 - 4, x - w, -12); c.lineTo(x + w, -12); c.quadraticCurveTo(x + w + 1 + bil, -h * 0.65 - 4, x + w, -h - 2); c.closePath(); c.fill(); c.stroke(); };
+    const flag = (x, y, col, skull) => { c.fillStyle = col; c.beginPath(); c.moveTo(x, y); c.lineTo(x + 10 + Math.sin(t * 6) * 1.5, y + 2.5); c.lineTo(x, y + 5.5); c.closePath(); c.fill(); c.stroke(); if (skull) { c.fillStyle = '#fff'; c.beginPath(); c.arc(x + 4, y + 2.6, 1.6, 0, 7); c.fill(); } };
+    const ports = (x0, x1, y, step = 6) => { c.fillStyle = '#111'; for (let k = x0; k <= x1; k += step) { c.beginPath(); c.arc(k, y, 1.5, 0, 7); c.fill(); } };
+    const bil = Math.sin(t * 3) * 1.2;
+    switch (type) {
+      case 'pship': { // 작은 해적 범선: 돛대 1개, 해골 깃발
+        hull('#7a4e2a', '#c8a060', -14, 15, -11); ports(-6, 6, -6);
+        mast(0, 30); sail(0, 30, 8, '#efe6d0', bil); c.fillStyle = '#222'; c.beginPath(); c.arc(0, -24, 2.6, 0, 7); c.fill(); c.fillRect(-2.6, -21.5, 5.2, 1.4);
+        flag(1, -36, '#151515', true); break; }
+      case 'galleon': { // 진홍 갤리온: 붉은 돛 3개, 높은 선미 누각, 포문 가득
+        hull('#8a1e18', '#ffd23f', -20, 22, -14); P([[-20, -14], [-20, -24], [-10, -24], [-8, -14]], '#a8281e'); c.fillStyle = '#ffd23f'; c.fillRect(-19, -22, 9, 1.6);
+        ports(-14, 14, -8, 5); ports(-14, 14, -4, 5);
+        [[-6, 30], [4, 38], [14, 28]].forEach(([x, h], k) => { mast(x, h); sail(x, h, 6.5, '#d8343a', bil + k); c.fillStyle = '#ffd23f'; c.fillRect(x - 6.5, -h * 0.6 - 4, 13, 1.6); });
+        flag(5, -44, '#ffd23f'); break; }
+      case 'whale': { // 고래 모함: 고래 모양 선체, 꼬리, 물줄기
+        c.fillStyle = '#3a6a9a'; c.beginPath(); c.ellipse(2, -9, 22, 11, 0, 0, 7); c.fill(); c.stroke();
+        c.fillStyle = '#cfe6f4'; c.beginPath(); c.ellipse(4, -3, 17, 4.5, 0, 0, Math.PI); c.fill();
+        P([[-18, -10], [-30, -20], [-27, -10], [-30, 0]], '#3a6a9a');
+        c.fillStyle = '#fff'; c.beginPath(); c.arc(16, -11, 2.4, 0, 7); c.fill(); c.fillStyle = '#111'; c.beginPath(); c.arc(16.6, -11, 1.2, 0, 7); c.fill();
+        c.strokeStyle = '#1a3a5a'; c.beginPath(); c.moveTo(14, -5); c.quadraticCurveTo(19, -3, 23, -6); c.stroke(); c.strokeStyle = ink;
+        const sp = 6 + Math.abs(Math.sin(t * 2)) * 8; c.fillStyle = 'rgba(190,235,255,0.9)'; c.beginPath(); c.moveTo(0, -19); c.quadraticCurveTo(-5, -19 - sp, -8, -17 - sp * 0.6); c.quadraticCurveTo(0, -21 - sp, 8, -17 - sp * 0.6); c.quadraticCurveTo(5, -19 - sp, 0, -19); c.fill();
+        mast(-8, 18); flag(-7, -24, '#7ad0ff'); break; }
+      case 'galley': { // 해상 식당선: 넓은 선체, 줄무늬 차양, 굴뚝 연기, 노
+        c.strokeStyle = '#6a4020'; c.lineWidth = 2; for (let k = -12; k <= 12; k += 6) { const o = Math.sin(t * 5 + k) * 2; c.beginPath(); c.moveTo(k, -4); c.lineTo(k - 4 + o, 4); c.stroke(); } c.lineWidth = 1.6; c.strokeStyle = ink;
+        hull('#c07a3a', '#fff6e0', -20, 21, -12);
+        c.fillStyle = '#4a3020'; c.fillRect(-12, -24, 1.6, 12); c.fillRect(8, -24, 1.6, 12);
+        for (let k = 0; k < 6; k++) { c.fillStyle = k % 2 ? '#fff6e0' : '#e04a3a'; c.fillRect(-14 + k * 4.2, -28, 4.2, 5); } c.strokeRect(-14, -28, 25.2, 5);
+        c.fillStyle = '#6a6a72'; c.fillRect(13, -26, 5, 14); c.strokeRect(13, -26, 5, 14);
+        for (let k = 0; k < 3; k++) { const ph = (t * 0.6 + k / 3) % 1; c.fillStyle = `rgba(230,230,235,${(1 - ph) * 0.7})`; c.beginPath(); c.arc(15.5 + Math.sin(ph * 5) * 3, -28 - ph * 16, 2.5 + ph * 4, 0, 7); c.fill(); }
+        c.fillStyle = '#fff'; c.beginPath(); c.arc(-2, -15, 3, Math.PI, 0); c.fill(); c.stroke(); break; }
+      case 'ark': { // 방주 전함: 철판 선체, 포탑, 굴뚝 (돛 없음)
+        P([[-20, -15], [21, -15], [17, 0], [-16, 0]], '#4a5560'); c.fillStyle = '#7a8590'; c.fillRect(-19, -15, 39, 3);
+        c.fillStyle = '#c0c8d0'; for (let k = -16; k <= 16; k += 5) { c.beginPath(); c.arc(k, -7, 0.9, 0, 7); c.fill(); }
+        P([[-14, -15], [-14, -25], [2, -25], [4, -15]], '#5a6570'); c.fillStyle = '#7aff9a'; c.fillRect(-11, -22, 3, 2.5); c.fillRect(-5, -22, 3, 2.5);
+        c.fillStyle = '#3a4248'; c.beginPath(); c.arc(11, -16, 5, Math.PI, 0); c.fill(); c.stroke(); c.save(); c.translate(11, -18); c.rotate(-0.15 - ak * 0.2); c.fillRect(0, -1.6, 13, 3.2); c.strokeRect(0, -1.6, 13, 3.2); c.restore();
+        c.fillStyle = '#2a3238'; c.fillRect(-10, -33, 5, 8); c.strokeRect(-10, -33, 5, 8);
+        for (let k = 0; k < 2; k++) { const ph = (t * 0.5 + k / 2) % 1; c.fillStyle = `rgba(90,96,104,${(1 - ph) * 0.6})`; c.beginPath(); c.arc(-7.5, -35 - ph * 14, 2.5 + ph * 4, 0, 7); c.fill(); }
+        break; }
+      case 'sunship': { // 태양 범선: 금빛 선체, 태양 원반 돛, 빛살
+        hull('#d89a20', '#fff2b0', -18, 21, -12);
+        mast(1, 34);
+        c.save(); c.translate(1, -30); c.rotate(t * 0.5); c.fillStyle = '#ffd23f'; for (let k = 0; k < 10; k++) { c.rotate(Math.PI / 5); c.beginPath(); c.moveTo(-2, -13); c.lineTo(0, -19); c.lineTo(2, -13); c.closePath(); c.fill(); } c.restore();
+        const g = c.createRadialGradient(1, -30, 1, 1, -30, 12); g.addColorStop(0, '#fffbe0'); g.addColorStop(1, '#ff9a1a'); c.fillStyle = g; c.beginPath(); c.arc(1, -30, 12, 0, 7); c.fill(); c.stroke();
+        c.fillStyle = '#c8681a'; c.beginPath(); c.arc(-3, -32, 1.4, 0, 7); c.arc(5, -32, 1.4, 0, 7); c.fill(); c.strokeStyle = '#c8681a'; c.beginPath(); c.arc(1, -29, 4, 0.2, Math.PI - 0.2); c.stroke(); c.strokeStyle = ink;
+        break; }
+      case 'blackpearl': { // 블랙펄: 검은 선체, 찢어진 검은 돛, 초록 유령 등불
+        hull('#141418', '#3a3a44', -20, 22, -14); ports(-14, 14, -8, 5);
+        [[-8, 30], [3, 40], [14, 30]].forEach(([x, h], k) => { mast(x, h); const w = 7, b2 = bil + k; c.fillStyle = '#26262e'; c.beginPath(); c.moveTo(x - w, -h - 2); c.lineTo(x + w, -h - 2); c.quadraticCurveTo(x + w + 1 + b2, -h * 0.65, x + w, -14); for (let q = 0; q < 5; q++) c.lineTo(x + w - (q + 0.5) * w * 2 / 5, q % 2 ? -14 : -18); c.lineTo(x - w, -14); c.quadraticCurveTo(x - w + b2, -h * 0.65, x - w, -h - 2); c.closePath(); c.fill(); c.stroke(); });
+        flag(4, -46, '#000', true);
+        const gl = 0.6 + Math.sin(t * 5) * 0.3; c.fillStyle = `rgba(120,255,170,${gl})`; for (const x of [-17, 20]) { c.beginPath(); c.arc(x, -18, 2.6, 0, 7); c.fill(); }
+        if (ak > 0) { c.fillStyle = `rgba(120,255,170,${ak})`; c.beginPath(); c.arc(25, -8, 5 * ak + 1, 0, 7); c.fill(); }
+        break; }
+      default: { hull(D.hull, D.trim); ports(-10, 10, -7); [-6, 6].forEach((x, k) => { mast(x, 28); sail(x, 28, 6, D.sail, bil + k); }); flag(6, -36, D.flag); }
+    }
+    if (ak > 0 && type !== 'blackpearl' && type !== 'ark') { c.fillStyle = `rgba(255,200,90,${ak})`; c.beginPath(); c.arc(24, -7, 4 * ak + 1, 0, 7); c.fill(); }
+    if (ak > 0 && type === 'ark') { c.fillStyle = `rgba(255,200,90,${ak})`; c.beginPath(); c.arc(25, -20, 4 * ak + 1, 0, 7); c.fill(); }
     c.restore();
   }
   // 초상화 (패널·조합표 배지용)
@@ -2964,6 +3007,11 @@ window.RENDER = window.RENDER2D;
     mast: new Pool(cyl(0.04, 0.05, 1.6, 6).translate(0, 0.8, 0), flat(), 192),
     sail: new Pool(bx(0.95, 0.75, 0.04), flat({ side: THREE.DoubleSide }), 192),
     pflag: new Pool(bx(0.32, 0.18, 0.02).translate(0.16, 0, 0), flat({ side: THREE.DoubleSide }), 64),
+    ubox: new Pool(bx(1, 1, 1), flat({ flatShading: true }), 256),
+    usph: new Pool(sph(0.5, 14, 10), flat({ roughness: 0.5 }), 256),
+    ucyl: new Pool(cyl(0.5, 0.5, 1, 12), flat(), 256),
+    ucone: new Pool(cone(0.5, 1, 8), flat({ flatShading: true }), 256),
+    uglow: new Pool(sph(0.5, 10, 8), basic(), 128, false),
   };
   // 모자 (머리 꼭대기 기준, y=0 이 머리 위쪽 0.22 지점)
   const HATS = {
@@ -3146,18 +3194,65 @@ window.RENDER = window.RENDER2D;
       const pushL = (pool, lx, ly, lz, rx = 0, ry = 0, rz = 0, sc = 1, c, sy, sz) => { L.copy(comp(lx, ly, lz, rx, ry, rz, sc, sy === undefined ? sc : sy, sz === undefined ? sc : sz)); pool.push(_m2.multiplyMatrices(R, L), c); };
       const sw = u.moving ? Math.sin(a.walk) * 0.6 : 0;
       if (D.ship) {
-        const z = (D.size || 1) * 0.9, roll = Math.sin(t * 2 + u.id) * 0.06;
+        const z = (D.size || 1) * 0.9, roll = Math.sin(t * 2 + u.id) * 0.06, C = (h) => col(h);
         R.copy(comp(X, Y, Z, 0, heading, roll, s * z));
-        pushL(P.hull, 0, 0.25, 0, 0, 0, 0, 1, col(D.hull)); pushL(P.deck, 0, 0.47, 0, 0, 0, 0, 1, col(D.trim));
-        const ms = D.masts || 2, zs = ms === 3 ? [-0.5, 0.05, 0.6] : [-0.35, 0.4];
-        zs.forEach((mz, k) => { const big = k === Math.floor(ms / 2), hh = big ? 1 : 0.8, bil = Math.sin(t * 3 + k + u.id) * 0.08;
-          pushL(P.mast, 0, 0.47, mz, 0, 0, 0, hh, col('#4a3020'));
-          pushL(P.sail, 0, 0.47 + 0.95 * hh, mz, 0, Math.PI / 2 + bil, 0, hh, col(D.sail));
-          if (big) pushL(P.pflag, 0, 0.47 + 1.55 * hh, mz, 0, Math.PI / 2 + Math.sin(t * 6) * 0.3, 0, 1, col(D.flag)); });
-        if (ak > 0 && !G.reduced) glow(u.x + fx * 20, u.y + fz * 20, 20, 30, '#ffc060', ak * 0.6);
+        const B = (x, y, zz, sx, sy, sz, c, rx = 0, ry = 0, rz = 0) => pushL(P.ubox, x, y, zz, rx, ry, rz, sx, c, sy, sz);
+        const Sp = (x, y, zz, sx, sy, sz, c) => pushL(P.usph, x, y, zz, 0, 0, 0, sx, c, sy, sz);
+        const Cy = (x, y, zz, r, h, c, rx = 0, ry = 0, rz = 0) => pushL(P.ucyl, x, y, zz, rx, ry, rz, r * 2, c, h, r * 2);
+        const Gl = (x, y, zz, r, c) => pushL(P.uglow, x, y, zz, 0, 0, 0, r * 2, c);
+        const mast = (mz, h) => pushL(P.mast, 0, 0.47, mz, 0, 0, 0, h, C('#4a3020'));
+        const sail = (mz, h, c, k = 0) => pushL(P.sail, 0, 0.47 + 0.95 * h, mz, 0, Math.PI / 2 + Math.sin(t * 3 + k + u.id) * 0.08, 0, h, c);
+        const flag = (mz, h, c) => pushL(P.pflag, 0, 0.47 + 1.55 * h, mz, 0, Math.PI / 2 + Math.sin(t * 6) * 0.3, 0, 1, c);
+        const smoke = (x, y, zz) => { if (!G.reduced) for (let k = 0; k < 3; k++) { const ph = (t * 0.6 + k / 3) % 1; pushL(P.usph, x + Math.sin(ph * 5) * 0.1, y + ph * 0.9, zz, 0, 0, 0, 0.18 + ph * 0.3, C('#b8bcc4')); } };
+        switch (u.type) {
+          case 'pship': // 작은 해적 범선: 돛대 1개, 흰 돛 + 해골 깃발
+            pushL(P.hull, 0, 0.22, 0, 0, 0, 0, 0.8, C('#7a4e2a')); pushL(P.deck, 0, 0.4, 0, 0, 0, 0, 0.8, C('#c8a060'));
+            mast(0.05, 0.85); sail(0.08, 0.85, C('#efe6d0')); Sp(0.06, 1.3, 0.08, 0.16, 0.16, 0.05, C('#222')); flag(0.05, 0.85, C('#151515')); break;
+          case 'galleon': // 진홍 갤리온: 붉은 돛 3개, 높은 선미 누각, 금장식
+            pushL(P.hull, 0, 0.25, 0, 0, 0, 0, 1, C('#8a1e18')); pushL(P.deck, 0, 0.47, 0, 0, 0, 0, 1, C('#ffd23f'));
+            B(0, 0.75, -0.62, 0.62, 0.55, 0.42, C('#a8281e')); B(0, 1.04, -0.62, 0.66, 0.05, 0.46, C('#ffd23f'));
+            [[-0.25, 0.85], [0.25, 1.05], [0.72, 0.8]].forEach(([mz, h], k) => { mast(mz, h); sail(mz, h, C('#d8343a'), k); });
+            flag(0.25, 1.05, C('#ffd23f')); break;
+          case 'whale': { // 고래 모함: 고래 몸통, 꼬리지느러미, 물 뿜기
+            const sw = Math.sin(t * 2.5 + u.id) * 0.25;
+            Sp(0, 0.35, 0.1, 0.95, 0.7, 2.0, C('#3a6a9a')); Sp(0, 0.2, 0.25, 0.8, 0.35, 1.6, C('#cfe6f4'));
+            B(0, 0.42, -1.05, 0.9, 0.08, 0.38, C('#3a6a9a'), 0, sw, 0);
+            Sp(0.36, 0.5, 0.75, 0.12, 0.12, 0.12, C('#ffffff')); Sp(-0.36, 0.5, 0.75, 0.12, 0.12, 0.12, C('#ffffff'));
+            const sp = Math.abs(Math.sin(t * 2)) * 0.6; pushL(P.ucone, 0, 0.75 + sp * 0.5, 0.2, Math.PI, 0, 0, 0.25 + sp * 0.4, C('#bfeaff'), 0.3 + sp, 0.25 + sp * 0.4);
+            mast(-0.45, 0.55); flag(-0.45, 0.55, C('#7ad0ff')); break; }
+          case 'galley': // 해상 식당선: 넓은 배, 줄무늬 차양, 굴뚝 연기, 노
+            pushL(P.hull, 0, 0.22, 0, 0, 0, 0, 1.35, C('#c07a3a'), 1, 1); pushL(P.deck, 0, 0.42, 0, 0, 0, 0, 1.35, C('#fff6e0'));
+            for (const x of [-0.38, 0.38]) for (const zz of [-0.5, 0.35]) B(x, 0.75, zz, 0.05, 0.65, 0.05, C('#4a3020'));
+            for (let k = 0; k < 5; k++) B(0, 1.1, -0.6 + k * 0.25, 0.95, 0.06, 0.25, C(k % 2 ? '#fff6e0' : '#e04a3a'));
+            Cy(0, 0.85, 0.75, 0.1, 0.7, C('#6a6a72')); smoke(0, 1.25, 0.75);
+            for (const sx of [-1, 1]) for (let k = 0; k < 4; k++) B(sx * 0.6, 0.12, -0.5 + k * 0.33, 0.5, 0.04, 0.06, C('#6a4020'), 0, 0, sx * (0.5 + Math.sin(t * 5 + k) * 0.25));
+            break;
+          case 'ark': { // 방주 전함: 철판 선체, 포탑, 굴뚝
+            pushL(P.hull, 0, 0.3, 0, 0, 0, 0, 1.15, C('#4a5560'), 1.25, 1); pushL(P.deck, 0, 0.58, 0, 0, 0, 0, 1.15, C('#7a8590'));
+            B(0, 0.85, -0.35, 0.6, 0.5, 0.6, C('#5a6570')); B(0, 0.95, -0.06, 0.5, 0.08, 0.02, C('#7aff9a'));
+            const tr = Math.sin(t * 0.7 + u.id) * 0.4; Cy(0, 0.72, 0.5, 0.25, 0.2, C('#3a4248')); B(0, 0.75, 0.85 + ak * -0.08, 0.1, 0.1, 0.6, C('#2a3238'), 0, tr, 0);
+            Cy(0, 1.35, -0.45, 0.1, 0.5, C('#2a3238')); smoke(0, 1.6, -0.45);
+            if (!G.reduced) glow(u.x, u.y, 30, 40, '#7aff9a', 0.25); break; }
+          case 'sunship': { // 태양 범선: 금빛 선체, 태양 원반 돛 + 빛살
+            pushL(P.hull, 0, 0.25, 0, 0, 0, 0, 1, C('#d89a20')); pushL(P.deck, 0, 0.47, 0, 0, 0, 0, 1, C('#fff2b0'));
+            mast(0.05, 1.05);
+            Gl(0, 1.45, 0.05, 0.42, C('#ffd23f')); Sp(0, 1.45, 0.05, 0.6, 0.6, 0.6, C('#ff9a1a'));
+            for (let k = 0; k < 10; k++) { const an = k / 10 * Math.PI * 2 + t * 0.5; pushL(P.ucone, Math.sin(an) * 0.0, 1.45 + Math.cos(an) * 0.68, 0.05 + Math.sin(an) * 0.68, an, 0, 0, 0.12, C('#ffe066'), 0.28, 0.12); }
+            if (!G.reduced) glow(u.x, u.y, 80 * s, 70, '#ffb020', 0.45); break; }
+          case 'blackpearl': { // 블랙펄: 검은 선체, 검은 돛 3개, 초록 유령 등불
+            pushL(P.hull, 0, 0.25, 0, 0, 0, 0, 1, C('#141418')); pushL(P.deck, 0, 0.47, 0, 0, 0, 0, 1, C('#3a3a44'));
+            B(0, 0.72, -0.62, 0.6, 0.45, 0.4, C('#1e1e24'));
+            [[-0.3, 0.85], [0.22, 1.1], [0.72, 0.85]].forEach(([mz, h], k) => { mast(mz, h); sail(mz, h, C('#26262e'), k); });
+            flag(0.22, 1.1, C('#000000'));
+            const gl = 0.7 + Math.sin(t * 5) * 0.3; for (const zz of [-0.85, 1.05]) Gl(0, 0.8, zz, 0.09, col('#78ffaa', Math.round((gl - 1) * 5) / 5));
+            if (!G.reduced) glow(u.x, u.y, 30, 70 * s, '#78ffaa', 0.3); break; }
+          default:
+            pushL(P.hull, 0, 0.25, 0, 0, 0, 0, 1, C(D.hull)); pushL(P.deck, 0, 0.47, 0, 0, 0, 0, 1, C(D.trim));
+            [-0.35, 0.4].forEach((mz, k) => { mast(mz, 0.8); sail(mz, 0.8, C(D.sail), k); }); flag(0.4, 0.8, C(D.flag));
+        }
+        if (ak > 0 && !G.reduced) glow(u.x + fx * 20, u.y + fz * 20, 20, 30, u.type === 'blackpearl' ? '#78ffaa' : '#ffc060', ak * 0.6);
         comp(u.x * K, -0.12 + 0.03, u.y * K, 0, 0, 0, s); P.ringT.push(_m, u.owner === G.ME ? cTier[d.tier] : col(PCOLORS[u.owner]));
         if (sel.has(u.id)) { comp(u.x * K, -0.08, u.y * K, 0, 0, 0, s); P.ringSel.push(_m); }
-        if (D.flag && d.tier >= 4 && !G.reduced) glow(u.x, u.y, 2, 80 * s, tc, 0.3);
         continue;
       }
       const outfit = col(D.outfit), pants = col(D.pants), skin = col(D.skin), hair = col(D.hair);
