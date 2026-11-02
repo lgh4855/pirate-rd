@@ -499,6 +499,38 @@ button, .mb, .mb-it { touch-action: manipulation; }
 
 /* 미니맵이 오른쪽 아래로 가서, 행동 카드는 미니맵 위에 */
 .mcard:not([hidden]), body.m .mcard:not([hidden]) { bottom: calc(var(--barH, 0px) + var(--mmH, 70px) + env(safe-area-inset-bottom, 0px)) !important; }
+
+.mc-g2 .mb small { font-size: 8.5px; }
+.wp-pc { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; margin-top: 4px; }
+
+/* 색 태그: 물뎀 빨강 · 마뎀 파랑 · 스턴 노랑 · 버프 초록 … */
+.tgs { display: inline-flex; flex-wrap: wrap; gap: 2px; vertical-align: 1px; }
+.tg { display: inline-block; font-size: 9px; font-weight: 800; line-height: 13px; padding: 0 4px; border-radius: 4px; color: #0b1620; background: #9aa6b2; white-space: nowrap; }
+.tg[data-r="물뎀"] { background: #ff5a4a; color: #fff; }
+.tg[data-r="마뎀"] { background: #4f8cff; color: #fff; }
+.tg[data-r="기절"] { background: #ffd23f; }
+.tg[data-r="버프"] { background: #3ecf8e; }
+.tg[data-r="감속"] { background: #6fd8f5; }
+.tg[data-r="광역"] { background: #ff9a3c; }
+.tg[data-r="단일"] { background: #c3ccd6; }
+.tg[data-r="방깎"] { background: #a6e05a; }
+.tg[data-r="마방깎"] { background: #c08aff; }
+.tg[data-r="다중"] { background: #ff8ad8; }
+.tg[data-r="보스킬러"] { background: #ff4f7a; color: #fff; }
+.tg[data-r="처형"] { background: #b0203a; color: #fff; }
+.tg[data-r="체력%"] { background: #2fc2b0; }
+.tg[data-r="이동"] { background: #e6eef2; }
+.dt.p { background: #ff5a4a; } .dt.m { background: #4f8cff; }
+.role[data-r="물뎀"] { color: #fff; background: #ff5a4a; border-color: #ff5a4a; }
+.role[data-r="마뎀"] { color: #fff; background: #4f8cff; border-color: #4f8cff; }
+.role[data-r="기절"] { color: #0b1620; background: #ffd23f; border-color: #ffd23f; }
+.role[data-r="버프"] { color: #0b1620; background: #3ecf8e; border-color: #3ecf8e; }
+.mr-ab { margin-top: 2px; font-size: 9.5px; line-height: 1.35; color: #cfe0ea; }
+.mr-ab .mr-sk b { color: var(--gold); margin-right: 2px; }
+.mr-ab .ns, .ns { color: var(--muted); }
+#mrec .mr-ab { font-size: 9px; }
+#mrec .tg { font-size: 8.5px; line-height: 12px; padding: 0 3px; }
+.ms-tags { margin: 2px 0; }
 </style>
 </head><body>
 <div class="wrap">
@@ -798,7 +830,8 @@ const RD = (() => {
     fastBoss: { t: 20, gold: 100 },
     // 강화: 등급 묶음별로 따로 (흔함·안흔함 / 희귀함 / 전설 / 히든 / 특수: 영원·불멸·초월·특수). 20골드부터 단계마다 비싸짐
     upTracks: ['흔함·안흔함', '희귀함', '전설', '히든', '영원·불멸·초월'],
-    upCostFn: (lv) => Math.round(20 + 14 * lv + 1.2 * lv * lv), upStep: 0.1, upMax: 30,
+    upBase: [20, 60, 150, 300, 500], // 강화 시작 비용: 등급이 높을수록 비쌈
+    upCostFn: (lv, tr = 0) => Math.round([20, 60, 150, 300, 500][tr] * (1 + 0.5 * lv + 0.05 * lv * lv)), upStep: 0.12, upAspd: 0.04, upMax: 10,
     pirateShipChance: 0.15, // 라운드가 끝날 때 해적선(안흔함)이 대신 합류할 확률
     summonOdds: [0.88, 0.11, 0.01, 0, 0],
     woodShop: [{ tier: 1, cost: 3 }, { tier: 2, cost: 8 }],
@@ -1126,7 +1159,8 @@ const RD = (() => {
   const ST_R = 22;
   const STATIONS = GEO.map((G, p) => {
     const D = G.deck, top = p % 2 === 0, y = top ? D.y1 - 30 : D.y0 + 30;
-    return { ggold: { x: D.x0 + 52, y, r: ST_R }, gunit: { x: (D.x0 + D.x1) / 2, y, r: ST_R }, upgrade: { x: D.x1 - 52, y, r: ST_R } }; // 골드 도박장 · 유닛 도박장 · 강화소
+    const W = D.x1 - D.x0 - 104;
+    return { ggold: { x: D.x0 + 52, y, r: ST_R }, gunit: { x: D.x0 + 52 + W / 3, y, r: ST_R }, wisp: { x: D.x0 + 52 + W * 2 / 3, y, r: ST_R }, upgrade: { x: D.x1 - 52, y, r: ST_R } }; // 골드 도박장 · 유닛 도박장 · 위습 제단 · 강화소
   });
   // 건물 안쪽 점을 건물 밖 가장자리로 밀어냄
   function outStation(x, y, pad) {
@@ -1260,6 +1294,7 @@ const RD = (() => {
     return 1 + Math.min(b, 0.75);
   }
   const upTrackOf = (tier) => tier <= 1 ? 0 : tier === 2 ? 1 : tier === 3 ? 2 : tier === 4 ? 3 : 4;
+  const spdMul = (s, p, tier) => 1 + CFG.upAspd * (s.players[p].up[upTrackOf(tier)] || 0); // 강화: 공격 속도도 증가
   const dmgMul = (s, p, tier) => 1 + CFG.upStep * (s.players[p].up[upTrackOf(tier)] || 0);
   function removeUnits(s, ids) { const set = new Set(ids); s.units = s.units.filter(u => !set.has(u.id)); }
 
@@ -1372,7 +1407,7 @@ const RD = (() => {
       case 'upgrade': {
         const tr = a.track | 0; if (tr < 0 || tr >= CFG.upTracks.length) return false;
         if (pl.up[tr] >= CFG.upMax) return false;
-        const c = CFG.upCostFn(pl.up[tr]); if (pl.gold < c) return false;
+        const c = CFG.upCostFn(pl.up[tr], tr); if (pl.gold < c) return false;
         pl.gold -= c; pl.up[a.track]++; s.events.push({ e: 'station', p, kind: 'upgrade', track: a.track, lv: pl.up[a.track] }); return true;
       }
     }
@@ -1558,7 +1593,7 @@ const RD = (() => {
     for (const u of s.units) {
       const pl = s.players[u.owner];
       if (u.rapidT > 0) { u.rapidT -= dt; if (u.rapidT <= 0) u.rapidMul = 1; }
-      u.cd -= dt * auraAspd(s, u) * u.rapidMul * pl.rally.mul;
+      u.cd -= dt * auraAspd(s, u) * u.rapidMul * pl.rally.mul * spdMul(s, u.owner, UNITS[u.type].tier);
       if (u.cd > 0 || u.moving) continue;
       const def = UNITS[u.type];
       const inR = s.monsters.filter(m => m.hp > 0 && inRange(m, u, def.range));
@@ -1677,7 +1712,7 @@ const RD = (() => {
 
   return { WORLD, LANE, GEO, STORY, PCOLORS, PNAMES, CFG, TIERS, UNITS, RECIPES, BY_TIER, STORIES, CHEST, DRAW_POOL,
     create, dispatch, step, combinable, recipeUnits, recipeHave, usesOf, unitById, pathPos, hpFor, isBossWave, waveInfo,
-    dmgMul, upTrackOf, SHIPS, globalAtk, auraAspd, countOf, nextReq, wispSpots, PADS, STATIONS, ISLAND, zoneOf, zoneAt, isFree, deckBox };
+    dmgMul, spdMul, upTrackOf, SHIPS, globalAtk, auraAspd, countOf, nextReq, wispSpots, PADS, STATIONS, ISLAND, zoneOf, zoneAt, isFree, deckBox };
 })();
 if (typeof module !== 'undefined') module.exports = RD;
 </script><script>
@@ -2216,6 +2251,22 @@ window.RENDER2D = (() => {
     if (pu > 0 && !G.reduced) { ctx.globalCompositeOperation = 'lighter'; ctx.fillStyle = `rgba(255,230,140,${pu * 0.7})`; ctx.beginPath(); ctx.ellipse(0, -20, 24 + (1 - pu) * 30, 30 + (1 - pu) * 20, 0, 0, 7); ctx.fill(); ctx.globalCompositeOperation = 'source-over'; }
     ctx.restore();
   }
+  // 위습 제단: 돌 받침 위에 떠 있는 빛 구슬 (가진 위습 중 가장 높은 등급 색)
+  function drawAltar(x, y, p) {
+    const W = G.S.players[p] ? G.S.players[p].wisps : [], n = W.reduce((a, b) => a + b, 0);
+    let top = -1; W.forEach((k, t) => { if (k) top = t; });
+    const c = top >= 0 ? TIERS[top].color : '#7a8a96', bob = G.reduced ? 0 : Math.sin(clock * 2.4 + p) * 3;
+    ctx.save(); ctx.translate(x, y); ctx.lineWidth = 1.6; ctx.strokeStyle = ink;
+    ctx.fillStyle = 'rgba(0,0,0,0.35)'; ctx.beginPath(); ctx.ellipse(0, 4, 26, 10, 0, 0, 7); ctx.fill();
+    const sg = ctx.createLinearGradient(0, -26, 0, 2); sg.addColorStop(0, '#c8ccd4'); sg.addColorStop(1, '#6a707a');
+    ctx.fillStyle = sg; ctx.beginPath(); ctx.moveTo(-22, 2); ctx.lineTo(-16, -8); ctx.lineTo(-10, -8); ctx.lineTo(-8, -24); ctx.lineTo(8, -24); ctx.lineTo(10, -8); ctx.lineTo(16, -8); ctx.lineTo(22, 2); ctx.closePath(); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = '#9aa0aa'; ctx.beginPath(); ctx.ellipse(0, -24, 12, 4, 0, 0, 7); ctx.fill(); ctx.stroke();
+    ctx.strokeStyle = c; ctx.lineWidth = 1.4; ctx.globalAlpha = 0.8; ctx.beginPath(); ctx.moveTo(-5, -18); ctx.lineTo(0, -12); ctx.lineTo(5, -18); ctx.stroke(); ctx.globalAlpha = 1;
+    if (n && !G.reduced) { ctx.save(); ctx.globalCompositeOperation = 'lighter'; const g = ctx.createRadialGradient(0, -40 + bob, 0, 0, -40 + bob, 30); g.addColorStop(0, c); g.addColorStop(1, 'rgba(0,0,0,0)'); ctx.globalAlpha = 0.55 + Math.sin(clock * 4) * 0.15; ctx.fillStyle = g; ctx.beginPath(); ctx.arc(0, -40 + bob, 30, 0, 7); ctx.fill(); ctx.restore(); }
+    ctx.globalAlpha = n ? 1 : 0.45; ctx.fillStyle = c; ctx.strokeStyle = ink; ctx.lineWidth = 1.6; ctx.beginPath(); ctx.arc(0, -40 + bob, 9, 0, 7); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = 'rgba(255,255,255,0.75)'; ctx.beginPath(); ctx.arc(-3, -43 + bob, 3, 0, 7); ctx.fill();
+    ctx.restore();
+  }
   function drawForge(x, y, p, pu) {
     const col = PCOLORS[p];
     ctx.save(); ctx.translate(x, y);
@@ -2281,6 +2332,7 @@ window.RENDER2D = (() => {
       const ps = Math.max(0, (stPulse[p + 's'] || 0) - clock), pf = Math.max(0, (stPulse[p + 'u'] || 0) - clock);
       if (st.summon && vis(st.summon.x, st.summon.y)) items.push([st.summon.y + 6, () => drawSummonHall(st.summon.x, st.summon.y, p, Math.min(1, ps / 0.6))]);
       for (const k of ['ggold', 'gunit']) { const b = st[k]; if (!b) continue; const pg = Math.max(0, (stPulse[p + k] || 0) - clock); if (vis(b.x, b.y)) items.push([b.y + 6, () => drawGambleHall(b.x, b.y, p, Math.min(1, pg / 0.6), k === 'ggold')]); }
+      if (st.wisp && vis(st.wisp.x, st.wisp.y)) items.push([st.wisp.y + 6, () => drawAltar(st.wisp.x, st.wisp.y, p)]);
       if (vis(st.upgrade.x, st.upgrade.y)) items.push([st.upgrade.y + 6, () => drawForge(st.upgrade.x, st.upgrade.y, p, Math.min(1, pf / 0.6))]);
     });
   }
@@ -2736,7 +2788,7 @@ window.RENDER = window.RENDER2D;
   // 갑판 건물 (소환소 · 강화소)
   function stationAtScreen(sp) {
     if (!S) return null; const st = RD.STATIONS[ME];
-    for (const k of ['ggold', 'gunit', 'upgrade']) { const b = st[k], r = pickRadius(b) * 1.7; for (const h of [0, 18, 36]) { const p = toScreen(b.x, b.y, h); if ((p.x - sp.x) ** 2 + (p.y - sp.y) ** 2 <= r * r) return k; } }
+    for (const k of ['ggold', 'gunit', 'wisp', 'upgrade']) { const b = st[k], r = pickRadius(b) * 1.7; for (const h of [0, 18, 36]) { const p = toScreen(b.x, b.y, h); if ((p.x - sp.x) ** 2 + (p.y - sp.y) ** 2 <= r * r) return k; } }
     return null;
   }
   function selectStation(k) { selB = k; selIds = []; selMon = null; tmode = null; }
@@ -2897,6 +2949,7 @@ window.RENDER = window.RENDER2D;
     else if (a === 'wpick') { document.getElementById('wpick').hidden = true; useWisp(0, pickAt, b.dataset.type); }
     else if (a === 'bar') { const id = b.dataset.id; barSel = barSel === id ? null : id; barT = 0; barSig = ''; if (!barSel) document.getElementById('mbPop').hidden = true; else barPop(id); }
     else if (a === 'barx') { barSel = null; barSig = ''; barT = 0; document.getElementById('mbPop').hidden = true; }
+    else if (a === 'altar') { const st = RD.STATIONS[ME].wisp, g = GEO[ME]; const at = { x: st.x, y: st.y + (g.cy > st.y ? 46 : -46) }; useWisp(+b.dataset.t, at, b.dataset.type || null); selectStation('wisp'); updateHud(); }
     else if (a === 'recfold') { const rp = document.getElementById('mrec'); rp.classList.toggle('fold'); try { localStorage.setItem('rd_recfold', rp.classList.contains('fold') ? '1' : ''); } catch (e) {} }
     else if (a === 'wpclose') { document.getElementById('wpick').hidden = true; }
     else if (a === 'mclear') { selB = null; selIds = []; selMon = null; }
@@ -2939,6 +2992,7 @@ window.RENDER = window.RENDER2D;
       case 'F4': e.preventDefault(); stationKey('gunit'); break;
       case 'F2': e.preventDefault(); stationKey('upgrade'); break;
       case 'F3': e.preventDefault(); stationKey('ggold'); break;
+      case 'F5': e.preventDefault(); stationKey('wisp'); break;
       case 'KeyR': if (selB === 'upgrade') { doUpgrade(3); break; } if (act({ type: 'draw' })) { selNew(); updateHud(); } break;
       case 'KeyT': if (selB === 'upgrade') doUpgrade(4); break;
       case 'KeyC': if (primary()) document.querySelector('button[data-a="combine"]')?.click(); break;
@@ -3127,6 +3181,10 @@ window.RENDER = window.RENDER2D;
   // ---------- HUD ----------
   let lastSelHtml = '', bookSig = '', supplySig = '', storySig = '';
   function stationHtml(k, pl, play) {
+    if (k === 'wisp') {
+      const W = pl.wisps, rows = W.map((n, t) => `<div class="gm"><div class="gm-top"><b style="color:${TIERS[t].color}">${TIERS[t].name} 위습 ×${n}</b>${t ? `<button class="bact" data-a="altar" data-t="${t}" ${n && play ? '' : 'disabled'}>무작위 받기</button>` : ''}</div>${t ? '' : `<div class="wp-pc">${RD.BY_TIER[0].map(u => `<button class="bact" data-a="altar" data-t="0" data-type="${u}" ${n && play ? '' : 'disabled'}>${UNITS[u].name}</button>`).join('')}</div>`}</div>`).join('');
+      return `<div class="sel"><div class="badge bld" style="background:#5aa8d8">✨</div><div><div class="tier" style="color:#bfe8ff">갑판 건물</div><div class="name">위습 제단</div></div></div>${rows}<div class="empty">흔함 위습은 원하는 흔함 선원을 골라서 받고, 나머지는 그 등급에서 무작위로 받아요. F5로 이 건물을 고릅니다.</div>`;
+    }
     if (k === 'ggold' || k === 'gunit') {
       const sec = (kind, list, keys, title, desc) => `<h3 class="gm-h">${title}</h3><small class="gm-d">${desc}</small>` + list.map((G, t) => {
         const open = S.wave >= G.wave, can = open && play && pl.gold >= G.cost && pl.wood >= (G.wood || 0);
@@ -3141,18 +3199,23 @@ window.RENDER = window.RENDER2D;
         <div class="empty">${gold ? '골드 도박은 처음부터 모든 단계를 할 수 있어요.' : '중급은 20웨이브, 고급은 30웨이브부터 열려요.'} ${gold ? 'F3' : 'F4'}으로 이 건물을 고릅니다.</div>`;
     }
     const row = (t, key, label, sub) => {
-      const lv = pl.up[t], max = lv >= CFG.upMax, c = CFG.upCostFn(lv);
-      return `<div class="uprow"><div><b>${label}</b> <small>${sub}</small><div class="lvbar"><i style="width:${lv / CFG.upMax * 100}%"></i></div><small>Lv ${lv}/${CFG.upMax} · 공격력 +${Math.round(lv * CFG.upStep * 100)}%</small></div>
+      const lv = pl.up[t], max = lv >= CFG.upMax, c = CFG.upCostFn(lv, t);
+      return `<div class="uprow"><div><b>${label}</b> <small>${sub}</small><div class="lvbar"><i style="width:${lv / CFG.upMax * 100}%"></i></div><small>Lv ${lv}/${CFG.upMax} · 공격력 +${Math.round(lv * CFG.upStep * 100)}% · 공속 +${Math.round(lv * CFG.upAspd * 100)}%</small></div>
         <button class="bact" data-a="bup" data-t="${t}" ${!max && play && pl.gold >= c ? '' : 'disabled'}>강화 <kbd>${key}</kbd><span class="cost">${max ? '최대' : c + '골드'}</span></button></div>`;
     };
     return `<div class="sel"><div class="badge bld" style="background:#ff8a5a">강</div><div><div class="tier" style="color:#ff8a5a">갑판 건물</div><div class="name">강화소</div></div></div>
       ${CFG.upTracks.map((nm, t) => row(t, 'QWERT'[t], nm, '')).join('')}
-      <div class="empty">강화는 등급 묶음 전체에 적용되고 최대 ${CFG.upMax}단계입니다. F2로 이 건물을 고릅니다.</div>`;
+      <div class="empty">강화는 등급 묶음 전체에 적용돼요. 단계마다 공격력 +${Math.round(CFG.upStep * 100)}%, 공격속도 +${Math.round(CFG.upAspd * 100)}%, 최대 ${CFG.upMax}단계이고 높은 등급일수록 시작 비용이 비싸요. F2로 이 건물을 고릅니다.</div>`;
   }
   const pic = (type) => window.FIG2D ? FIG2D.portrait(type) : '';
   const badge = (type, cls = 'badge') => { const d = UNITS[type], c = TIERS[d.tier].color, p = pic(type); return p ? `<div class="${cls} badge pic" style="border-color:${c};background-image:url(${p})"></div>` : `<div class="${cls} badge" style="background:${c}">${d.glyph}</div>`; };
   const chipIcon = (t) => { const c = TIERS[UNITS[t].tier].color, p = pic(t); return p ? `<i class="pic" style="border-color:${c};background-image:url(${p})"></i>` : `<i style="background:${c}">${UNITS[t].glyph}</i>`; };
   const dtTag = (d) => `<span class="dt ${d.dtype === 'm' ? 'm' : 'p'}">${d.dtype === 'm' ? '마뎀' : '물뎀'}</span>`;
+  // 한눈에 보는 색 태그: 물뎀·마뎀·스턴·버프 등 종류마다 다른 색
+  const TAG_LABEL = { 기절: '스턴' };
+  const rolesOf = (d) => { const r = d.roles.slice(), t = d.skill ? d.skill.desc : ''; if (/기절|스턴/.test(t) && !r.includes('기절')) r.push('기절'); if (/공속|공격력 \+|공격 속도/.test(t) && !r.includes('버프')) r.push('버프'); if (/느려|감속/.test(t) && !r.includes('감속')) r.push('감속'); return r; };
+  const tags = (d, max = 9) => `<span class="tgs"><span class="tg" data-r="${d.dtype === 'm' ? '마뎀' : '물뎀'}">${d.dtype === 'm' ? '마뎀' : '물뎀'}</span>${rolesOf(d).slice(0, max).map(r => `<span class="tg" data-r="${r}">${TAG_LABEL[r] || r}</span>`).join('')}</span>`;
+  const skillLine = (d) => d.skill ? `<b>${d.skill.name}</b> ${d.skill.desc}` : '<span class="ns">고유 스킬 없음</span>';
   const roles = (d) => `<div class="roles">${d.move ? `<span class="role" data-r="${d.move === 'fly' ? '비행' : '수영'}">${d.move === 'fly' ? '비행' : '수영'}</span>` : ''}${d.excl ? '<span class="role" data-r="랜덤전용">랜덤전용</span>' : ''}${d.roles.map(r => `<span class="role" data-r="${r}">${r}</span>`).join('')}</div>`;
   const CMDS = [['move', '이동', 'M'], ['stop', '정지', 'S'], ['hold', '홀드', 'H'], ['amove', '공격', 'A'], ['patrol', '순찰', 'P']];
   function updateHud() {
@@ -3218,7 +3281,7 @@ window.RENDER = window.RENDER2D;
       html = `<div class="sel">${badge(u.type)}
         <div><div class="tier" style="color:${T.color}">${T.name} · ${ord}</div><div class="name">${d.name} ${dtTag(d)}</div></div></div>
         ${roles(d)}
-        <div class="specs"><div>공격력<b>${Math.round(d.dmg * RD.dmgMul(S, ME, d.tier) * RD.globalAtk(S, ME))}</b></div><div>초당 공격<b>${(aspd / d.cd).toFixed(1)}</b></div><div>사거리<b>${d.range}</b></div></div>
+        <div class="specs"><div>공격력<b>${Math.round(d.dmg * RD.dmgMul(S, ME, d.tier) * RD.globalAtk(S, ME))}</b></div><div>초당 공격<b>${(aspd * RD.spdMul(S, ME, d.tier) / d.cd).toFixed(1)}</b></div><div>사거리<b>${d.range}</b></div></div>
         <div class="skill mv">${d.move === 'fly' ? '비행 · 바다와 다른 구역 위를 자유롭게 날아다닙니다' : d.move === 'swim' ? '수영 · 바다를 헤엄쳐 어디든 갈 수 있습니다' : '도보 · 내 갑판과 스토리존 안에서만 걷고, 포탈 칸으로 오갑니다'}</div>
         <div class="skill"><b>${(d.skill ? d.skill.name : '고유 스킬 없음')}</b> · ${kind} 공격 · ${(d.skill ? d.skill.desc : '')}${d.bossMul ? ` · 보스·건물 ${d.bossMul}배` : ''}${aspd > 1 ? ` · <span style="color:var(--gold)">북 버프 +${Math.round((aspd - 1) * 100)}%</span>` : ''}</div>
         ${uses ? `<h3>이 선원으로 만들 수 있는 것</h3><div class="uses">${uses}</div>` : ''}
@@ -3407,12 +3470,12 @@ window.RENDER = window.RENDER2D;
     if (selMon != null) { const o = enemyById(selMon); if (o) ring2(o, '#f4bf3c', 2, [5, 4]); }
     { // 갑판 건물: 선택·마우스 올림 표시와 이름표
       const st = RD.STATIONS[ME], hv = hover && !inMinimap(hover) ? stationAtScreen(hover) : null;
-      for (const k of ['ggold', 'gunit', 'upgrade']) {
+      for (const k of ['ggold', 'gunit', 'wisp', 'upgrade']) {
         const b = st[k], o = { x: b.x, y: b.y, kind: 'chest' };
         if (selB === k) ring2(o, '#59d6a4', 2.5); else if (hv === k) ring2(o, 'rgba(255,255,255,0.7)', 1.5, [4, 4]);
-        const p = toScreen(b.x, b.y, 64), label = k === 'ggold' ? '💰 골드 도박장' : k === 'gunit' ? '🎲 유닛 도박장' : '강화소 · F2';
+        const p = toScreen(b.x, b.y, 64), label = k === 'ggold' ? '💰 골드 도박장' : k === 'gunit' ? '🎲 유닛 도박장' : k === 'wisp' ? `✨ 위습 제단 ×${me().wisps.reduce((a, b) => a + b, 0)}` : '강화소 · F2';
         ctx.font = '800 11px sans-serif'; ctx.textAlign = 'center'; ctx.lineWidth = 3; ctx.strokeStyle = '#0b1620'; ctx.strokeText(label, p.x, p.y);
-        ctx.fillStyle = selB === k ? '#59d6a4' : k === 'ggold' ? '#ffe08a' : k === 'gunit' ? '#d6b8ff' : '#ffb08a'; ctx.fillText(label, p.x, p.y); ctx.textAlign = 'start';
+        ctx.fillStyle = selB === k ? '#59d6a4' : k === 'ggold' ? '#ffe08a' : k === 'gunit' ? '#d6b8ff' : k === 'wisp' ? '#bfe8ff' : '#ffb08a'; ctx.fillText(label, p.x, p.y); ctx.textAlign = 'start';
       }
     }
     if (hover && !inMinimap(hover) && (selIds.length || tmode)) { const o = enemyAtScreen(hover); if (o) { ring2(o, 'rgba(255,90,90,0.9)', 2); ctx.font = '700 11px sans-serif'; ctx.textAlign = 'center'; ctx.lineWidth = 3; ctx.strokeStyle = '#0b1620'; const s2 = '우클릭: 집중 공격'; ctx.strokeText(s2, hover.x, hover.y - 16); ctx.fillStyle = '#ffb0a8'; ctx.fillText(s2, hover.x, hover.y - 16); ctx.textAlign = 'start'; } }
@@ -3848,8 +3911,14 @@ window.RENDER = window.RENDER2D;
     const pl = me(), play = S.phase === 'play' && started;
     const us = sel();
     if (selB) {
-      if (selB === 'upgrade') return `<div class="mc-h">강화소 <small>등급 묶음별 공격력 +${Math.round(CFG.upStep * 100)}%/단계</small></div><div class="mc-g">${CFG.upTracks.map((nm, t) => { const lv = pl.up[t], max = lv >= CFG.upMax, c = CFG.upCostFn(lv); return mb('bup', nm.split('·')[0] + (nm.includes('·') ? '+' : ''), max ? `Lv ${lv} · 최대` : `Lv ${lv} · ${c}G`, { attrs: ` data-t="${t}"`, hot: !max && pl.gold >= c, off: !play || max || pl.gold < c }); }).join('')}${mb('mclear', '닫기', '')}</div>`;
+      if (selB === 'upgrade') return `<div class="mc-h">강화소 <small>단계마다 공격력 +${Math.round(CFG.upStep * 100)}% · 공격속도 +${Math.round(CFG.upAspd * 100)}% (최대 ${CFG.upMax})</small></div><div class="mc-g">${CFG.upTracks.map((nm, t) => { const lv = pl.up[t], max = lv >= CFG.upMax, c = CFG.upCostFn(lv, t); return mb('bup', nm.split('·')[0] + (nm.includes('·') ? '+' : ''), max ? `Lv ${lv} · 최대` : `Lv ${lv} · ${c}G`, { attrs: ` data-t="${t}"`, hot: !max && pl.gold >= c, off: !play || max || pl.gold < c }); }).join('')}${mb('mclear', '닫기', '')}</div>`;
       const gb = (kind, list) => list.map((G, t) => { const open = S.wave >= G.wave, ok = open && pl.gold >= G.cost && pl.wood >= (G.wood || 0); return mb('bgam', (kind === 'unit' ? '🎲' : '💰') + ['초급', '중급', '고급'][t], open ? `${G.cost}G${G.wood ? ' 🪵' + G.wood : ''}` : G.wave + '웨이브~', { attrs: ` data-k="${kind}" data-t="${t}"`, hot: ok, off: !play || !ok }); }).join('');
+      if (selB === 'wisp') {
+        const W = pl.wisps, left = W.map((n, t) => n ? `<span style="color:${TIERS[t].color}">${TIERS[t].name} ${n}</span>` : '').filter(Boolean).join(' · ') || '없음';
+        const picks = RD.BY_TIER[0].map(t => mb('altar', UNITS[t].name, '흔함 선택', { attrs: ` data-t="0" data-type="${t}"`, hot: W[0] > 0, off: !play || !W[0] })).join('');
+        const others = W.map((n, t) => t && n ? mb('altar', TIERS[t].name + ' 위습', '×' + n + ' · 무작위', { attrs: ` data-t="${t}"`, hot: true, off: !play }) : '').join('');
+        return `<div class="mc-h">✨ 위습 제단 <small>남은 위습: ${left}</small></div><div class="mc-g mc-g2">${picks}${others}</div>${W[0] ? '' : '<small class="mc-none">흔함 위습이 생기면 원하는 흔함 선원을 골라 받을 수 있어요</small>'}`;
+      }
       if (selB === 'ggold') return `<div class="mc-h">💰 골드 도박장 <small>골드를 걸고 골드를 받아요</small></div><div class="mc-g">${gb('gold', CFG.gambleGold)}</div>`;
       return `<div class="mc-h">🎲 유닛 도박장 <small>골드+나무를 걸고 선원을 받아요</small></div><div class="mc-g">${gb('unit', CFG.gambleUnit)}</div>`;
     }
@@ -3861,14 +3930,14 @@ window.RENDER = window.RENDER2D;
       const head = `<div class="mc-h"><span style="color:${T.color}">${T.name}</span> ${d.name}${us.length > 1 ? ` <small>외 ${us.length - 1}명</small>` : ''} <span class="dt ${d.dtype === 'm' ? 'm' : 'p'}">${d.dtype === 'm' ? '마뎀' : '물뎀'}</span></div>`;
       const aspd = RD.auraAspd(S, u), atk = Math.round(d.dmg * RD.dmgMul(S, ME, d.tier) * RD.globalAtk(S, ME));
       const kindL = { single: '단일', splash: '범위', chain: `연쇄 ${d.n}`, multi: `동시 ${d.n}` }[d.kind] || '';
-      const stat = `<div class="mc-stat"><span>공격력<b>${fmt(atk)}</b></span><span>초당 공격<b>${(aspd / d.cd).toFixed(1)}</b></span><span>사거리<b>${d.range}</b></span><span>${kindL}${d.move === 'fly' ? ' · 비행' : d.move === 'swim' ? ' · 수영' : ''}</span></div><div class="mc-skill">${d.skill ? `<b>${d.skill.name}</b> ${d.skill.desc}` : '<span class="ns">고유 스킬 없음</span>'}${d.bossMul ? ` · 보스·건물 ${d.bossMul}배` : ''}${aspd > 1 ? ` · <em>북 버프 +${Math.round((aspd - 1) * 100)}%</em>` : ''}</div>`;
+      const stat = `<div class="mc-stat"><span>공격력<b>${fmt(atk)}</b></span><span>초당 공격<b>${(aspd * RD.spdMul(S, ME, d.tier) / d.cd).toFixed(1)}</b></span><span>사거리<b>${d.range}</b></span></div><div class="ms-tags">${tags(d)}${d.move === 'fly' ? '<span class="tg" data-r="이동">비행</span>' : d.move === 'swim' ? '<span class="tg" data-r="이동">수영</span>' : ''}</div><div class="mc-skill">${d.skill ? `<b>${d.skill.name}</b> ${d.skill.desc}` : '<span class="ns">고유 스킬 없음</span>'}${d.bossMul ? ` · 보스·건물 ${d.bossMul}배` : ''}${aspd > 1 ? ` · <em>북 버프 +${Math.round((aspd - 1) * 100)}%</em>` : ''}</div>`;
       const row1 = mb('cmd', '공격', '이동', { attrs: ' data-c="amove"', hot: tmode === 'amove' }) + mb('cmd', '정지', '', { attrs: ' data-c="stop"' }) + mb('cmd', '홀드', '', { attrs: ' data-c="hold"' });
       const row2 = mb('combine', '랜덤 조합', T.need && !d.excl ? `${haveN}/${T.need}` : '불가', { hot: can, off: !can || !play }) + mb('type', '같은 선원', `${haveN}명`, { attrs: ` data-type="${u.type}"` }) + mb('sell', '판매', '+' + T.sell);
       const row3 = recs.map(r => {
         const have = RD.recipeHave(S, ME, r.id), TT = TIERS[r.dd.tier];
         const ings = RECIPES[r.id].map((t, k) => `<i class="mi${have[k] ? ' ok' : ''}" style="--tc:${TIERS[UNITS[t].tier].color}">${UNITS[t].name}${have[k] ? '✓' : ''}</i>`).join('');
         const cost = (TT.wood ? `<i class="mi cost${pl.wood >= TT.wood ? ' ok' : ''}">🪵${TT.wood}</i>` : '') + (TT.gold ? `<i class="mi cost${pl.gold >= TT.gold ? ' ok' : ''}">💰${TT.gold}</i>` : '');
-        return `<div class="mrec${r.ok ? ' hot' : ''}"><div class="mr-top"><b style="color:${TT.color}">${r.dd.name}</b><small>${TT.name}</small><button data-a="recipe" data-id="${r.id}" ${r.ok && play ? '' : 'disabled'}>조합</button></div><div class="mr-ing">${ings}${cost}</div></div>`;
+        return `<div class="mrec${r.ok ? ' hot' : ''}"><div class="mr-top"><b style="color:${TT.color}">${r.dd.name}</b><small>${TT.name}</small><button data-a="recipe" data-id="${r.id}" ${r.ok && play ? '' : 'disabled'}>조합</button></div><div class="mr-ab">${tags(r.dd, 4)} <span class="mr-sk">${skillLine(r.dd)}</span></div><div class="mr-ing">${ings}${cost}</div></div>`;
       }).join('');
       const cnt = us.length > 1 ? `선택 ${us.length}명` : `${haveN}명 보유`;
       const btns = `<div class="ms-btns">${mb('cmd', '홀드', '', { attrs: ' data-c="hold"', hot: us.every(o => o.order === 'hold') })}${mb('combine', '랜덤 조합', T.need && !d.excl ? `${haveN}/${T.need}` : '불가', { hot: can, off: !can || !play })}</div>`;
@@ -3876,7 +3945,7 @@ window.RENDER = window.RENDER2D;
     }
     const mon = selMon != null ? enemyById(selMon) : null;
     const wisps = pl.wisps.map((n, t) => n ? mb('wisp', TIERS[t].name + ' 위습', '×' + n, { attrs: ` data-t="${t}"`, hot: true, off: !play }) : '').filter(Boolean).slice(0, 3).join('');
-    return `<div class="mc-h">${mon ? (mon.kind === 'story' ? STORIES[mon.idx].name : mon.boss ? '보스' : '몬스터') + ` · 체력 ${fmt(Math.max(0, Math.ceil(mon.hp)))}` : '건물 · 보급'}</div><div class="mc-g">${mb('selb', '강화소', '', { attrs: ' data-k="upgrade"' })}${mb('selb', '💰골드 도박', '', { attrs: ' data-k="ggold"' })}${mb('selb', '🎲유닛 도박', '', { attrs: ' data-k="gunit"' })}${wisps}${pl.draws ? mb('draw', '랜덤 뽑기', '×' + pl.draws, { hot: true }) : ''}${mb('mview', '내 라인', '', { attrs: ' data-v="lane"' })}${mb('mview', '스토리존', '', { attrs: ' data-v="story"' })}</div>`;
+    return `<div class="mc-h">${mon ? (mon.kind === 'story' ? STORIES[mon.idx].name : mon.boss ? '보스' : '몬스터') + ` · 체력 ${fmt(Math.max(0, Math.ceil(mon.hp)))}` : '건물 · 보급'}</div><div class="mc-g">${mb('selb', '강화소', '', { attrs: ' data-k="upgrade"' })}${mb('selb', '💰골드 도박', '', { attrs: ' data-k="ggold"' })}${mb('selb', '🎲유닛 도박', '', { attrs: ' data-k="gunit"' })}${mb('selb', '✨위습 제단', '×' + pl.wisps.reduce((a, b) => a + b, 0), { attrs: ' data-k="wisp"', hot: pl.wisps.some(n => n > 0) })}${pl.draws ? mb('draw', '랜덤 뽑기', '×' + pl.draws, { hot: true }) : ''}${mb('mview', '내 라인', '', { attrs: ' data-v="lane"' })}${mb('mview', '스토리존', '', { attrs: ' data-v="story"' })}</div>`;
   }
   // ---- 맨 아래 조합 막대 (원랜디처럼): 등급 낮은 것부터 왼쪽에, 지금 가진 재료 수 표시 ----
   const BAR_IDS = Object.keys(RECIPES).sort((a, b) => UNITS[a].tier - UNITS[b].tier || (UNITS[a].ship ? 1 : 0) - (UNITS[b].ship ? 1 : 0) || RECIPES[a].length - RECIPES[b].length);
@@ -3905,7 +3974,7 @@ window.RENDER = window.RENDER2D;
     const d = UNITS[id], T = TIERS[d.tier], pl = me(), b = barInfo(id);
     const ings = RECIPES[id].map((t, k) => `<i class="mi${b.have[k] ? ' ok' : ''}" style="--tc:${TIERS[UNITS[t].tier].color}">${UNITS[t].name}${b.have[k] ? '✓' : ''}</i>`).join('');
     const cost = (T.wood ? `<i class="mi cost${pl.wood >= T.wood ? ' ok' : ''}">🪵${T.wood}</i>` : '') + (T.gold ? `<i class="mi cost${pl.gold >= T.gold ? ' ok' : ''}">💰${T.gold}</i>` : '');
-    const h = `<div class="mr-top"><b style="color:${T.color}">${d.name}</b><small>${T.name} · ${d.dtype === 'm' ? '마뎀' : '물뎀'} · ${(d.skill ? d.skill.name : '고유 스킬 없음')}</small><button data-a="recipe" data-id="${id}" ${b.ok && S.phase === 'play' ? '' : 'disabled'}>조합</button><button data-a="barx" aria-label="닫기">✕</button></div><div class="mr-ing">${ings}${cost}</div>`;
+    const h = `<div class="mr-top"><b style="color:${T.color}">${d.name}</b><small>${T.name}</small><button data-a="recipe" data-id="${id}" ${b.ok && S.phase === 'play' ? '' : 'disabled'}>조합</button><button data-a="barx" aria-label="닫기">✕</button></div><div class="mr-ab">${tags(d)} <span class="mr-sk">${skillLine(d)}</span></div><div class="mr-ing">${ings}${cost}</div>`;
     if (pp.dataset.sig !== h) { pp.innerHTML = h; pp.dataset.sig = h; }
     pp.hidden = false;
   }
