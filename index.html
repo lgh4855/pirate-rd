@@ -1466,19 +1466,7 @@ const RD = (() => {
       else if (u.order === 'patrol') { const tx = u.ox, ty = u.oy; u.ox = u.tx; u.oy = u.ty; u.tx = tx; u.ty = ty; }
       else if (u.order !== 'attack') u.order = 'idle'; // 지정 공격은 닿을 수 있는 끝까지 와서 기다림
     }
-    // 겹침 풀기 (홀드 중인 선원은 밀리지 않음)
-    const n = s.units.length, min = UR * 2 - 2;
-    for (let i = 0; i < n; i++) for (let j = i + 1; j < n; j++) {
-      const a = s.units[i], b = s.units[j];
-      let dx = b.x - a.x, dy = b.y - a.y; const dd = dx * dx + dy * dy;
-      if (dd >= min * min) continue;
-      let dist = Math.sqrt(dd); if (dist < 0.01) { dx = a.id < b.id ? 1 : -1; dy = 0.5; dist = Math.sqrt(1.25); }
-      const push = (min - dist) / 2 * 0.5, px = dx / dist * push, py = dy / dist * push;
-      const ha = a.order === 'hold', hb = b.order === 'hold';
-      if (ha && hb) continue;
-      const ka = ha ? 0 : hb ? 2 : 1, kb = hb ? 0 : ha ? 2 : 1;
-      a.x -= px * ka; a.y -= py * ka; b.x += px * kb; b.y += py * kb;
-    }
+    // 선원끼리는 겹쳐도 서로 밀어내지 않음 (가만히 둔 자리 그대로 유지)
     for (const u of s.units) {
       u.x = clampX(u.x); u.y = clampY(u.y);
       const os = outStation(u.x, u.y, UR - 2); if (os) { u.x = os.x; u.y = os.y; }
