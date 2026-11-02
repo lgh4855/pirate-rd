@@ -419,6 +419,23 @@ body:not(.m) #mrec:not([hidden]) { top: 8px; }
 #mrec .mrecs { margin-top: 4px; }
 .mr-title { font-size: 12px; font-weight: 800; color: var(--gold); margin: 0 2px; }
 html.rot body.m #mrec:not([hidden]) { width: min(calc(var(--rw) * 0.58), 270px); max-height: calc(var(--rh) * 0.46); }
+
+/* 조합법 패널: 작게 */
+#mrec:not([hidden]) { width: min(44%, 196px); max-height: 32%; padding: 4px; border-radius: 9px; background: rgba(8,20,30,0.78); }
+html.rot body.m #mrec:not([hidden]) { width: min(calc(var(--rw) * 0.44), 196px); max-height: calc(var(--rh) * 0.32); }
+#mrec .mr-title { display: flex; width: 100%; justify-content: space-between; align-items: center; padding: 2px 4px; border: 0; background: none; font-size: 10.5px; min-height: 0; }
+#mrec .mr-title span { color: var(--muted); transition: transform .15s; }
+#mrec.fold .mr-title span { transform: rotate(-90deg); }
+#mrec.fold .mrecs, #mrec.fold .mc-none { display: none; }
+#mrec .mrecs { gap: 3px; margin-top: 2px; }
+#mrec .mrec { padding: 3px 4px; border-radius: 7px; }
+#mrec .mr-top { gap: 4px; }
+#mrec .mr-top b { font-size: 11px; }
+#mrec .mr-top small { font-size: 9px; }
+#mrec .mr-top button { padding: 2px 7px; font-size: 10.5px; min-height: 0; }
+#mrec .mr-ing { gap: 2px; margin-top: 2px; }
+#mrec .mi { font-size: 9px; padding: 0 4px; }
+#mrec .mc-none { font-size: 9.5px; margin: 2px 4px; }
 </style>
 </head><body>
 <script>
@@ -3544,6 +3561,7 @@ window.RENDER = window.RENDER2D;
     else if (a === 'bgam') doGamble(b.dataset.k || 'gold', +b.dataset.t);
     else if (a === 'selb') { selectStation(b.dataset.k); }
     else if (a === 'wpick') { document.getElementById('wpick').hidden = true; useWisp(0, pickAt, b.dataset.type); }
+    else if (a === 'recfold') { const rp = document.getElementById('mrec'); rp.classList.toggle('fold'); try { localStorage.setItem('rd_recfold', rp.classList.contains('fold') ? '1' : ''); } catch (e) {} }
     else if (a === 'wpclose') { document.getElementById('wpick').hidden = true; }
     else if (a === 'mclear') { selB = null; selIds = []; selMon = null; }
     else if (a === 'mview') { if (b.dataset.v === 'lane') myLaneView(); else storyView(); }
@@ -4513,7 +4531,7 @@ window.RENDER = window.RENDER2D;
         const cost = (TT.wood ? `<i class="mi cost${pl.wood >= TT.wood ? ' ok' : ''}">🪵${TT.wood}</i>` : '') + (TT.gold ? `<i class="mi cost${pl.gold >= TT.gold ? ' ok' : ''}">💰${TT.gold}</i>` : '');
         return `<div class="mrec${r.ok ? ' hot' : ''}"><div class="mr-top"><b style="color:${TT.color}">${r.dd.name}</b><small>${TT.name}</small><button data-a="recipe" data-id="${r.id}" ${r.ok && play ? '' : 'disabled'}>조합</button></div><div class="mr-ing">${ings}${cost}</div></div>`;
       }).join('');
-      return head + `<div class="mc-g">${row1}${row2}</div><!--REC-->` + (row3 ? `<div class="mr-title">조합법 · ${d.name}</div><div class="mrecs">${row3}</div>` : `<div class="mr-title">조합법 · ${d.name}</div><small class="mc-none">이 선원으로 만드는 조합식은 없어요</small>`);
+      return head + `<div class="mc-g">${row1}${row2}</div><!--REC-->` + (row3 ? `<button class="mr-title" data-a="recfold">조합법 · ${d.name}<span>▾</span></button><div class="mrecs">${row3}</div>` : `<button class="mr-title" data-a="recfold">조합법 · ${d.name}<span>▾</span></button><small class="mc-none">이 선원으로 만드는 조합식은 없어요</small>`);
     }
     const mon = selMon != null ? enemyById(selMon) : null;
     const wisps = pl.wisps.map((n, t) => n ? mb('wisp', TIERS[t].name + ' 위습', '×' + n, { attrs: ` data-t="${t}"`, hot: true, off: !play }) : '').filter(Boolean).slice(0, 3).join('');
@@ -4593,6 +4611,7 @@ window.RENDER = window.RENDER2D;
   }
 
   // 시험용: 콘솔이나 성능 측정에서 씀
+  try { if (localStorage.getItem('rd_recfold')) document.getElementById('mrec')?.classList.add('fold'); } catch (e) {}
   window.__rd = () => S;
   window.__view = view;
   window.__net = () => NET;
