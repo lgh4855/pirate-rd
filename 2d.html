@@ -487,6 +487,18 @@ html.rot body.m #mstat:not([hidden]) { width: min(calc(var(--rw) * 0.4), 176px);
 /* 브라우저 두 번 탭 확대·페이지 핀치 확대 끄기 (스크롤은 그대로) */
 html { touch-action: pan-x pan-y; -webkit-text-size-adjust: 100%; }
 button, .mb, .mb-it { touch-action: manipulation; }
+
+/* 선택한 선원: 왼쪽 위 칸 하나에 능력치 + 홀드·랜덤 조합 */
+#mstat { pointer-events: none; }
+#mstat button { pointer-events: auto; }
+#mstat .ms-n { float: right; color: var(--muted); font-weight: 600; font-size: 9.5px; margin-left: 4px; }
+#mstat .ms-btns { display: grid; grid-template-columns: 1fr 1fr; gap: 3px; margin-top: 4px; }
+#mstat .mb { min-height: 30px; font-size: 10.5px; border-radius: 7px; padding: 2px; }
+#mstat .mb small { font-size: 9px; }
+#mstat .ns { color: var(--muted); }
+
+/* 미니맵이 오른쪽 아래로 가서, 행동 카드는 미니맵 위에 */
+.mcard:not([hidden]), body.m .mcard:not([hidden]) { bottom: calc(var(--barH, 0px) + var(--mmH, 70px) + env(safe-area-inset-bottom, 0px)) !important; }
 </style>
 </head><body>
 <div class="wrap">
@@ -1063,6 +1075,7 @@ const RD = (() => {
   // ---- 이동 방식: 대부분 도보(자기 갑판·스토리존 안에서만, 포탈로 오감), 일부는 비행·수영으로 어디든 ----
   const MOVE_TYPES = { gale: 'fly', storm: 'fly', dragon: 'fly', star: 'fly', chrono: 'fly', frost: 'swim', witch: 'swim', abyss: 'swim', tide: 'swim', ghost: 'swim' };
   for (const k in MOVE_TYPES) if (UNITS[k]) UNITS[k].move = MOVE_TYPES[k];
+  for (const k in UNITS) if (UNITS[k].tier === 0) UNITS[k].skill = null; // 흔함 선원은 고유 스킬 없음
   const BY_TIER = [0, 1, 2, 3, 4, 5, 6, 7, 8].map(t => Object.keys(UNITS).filter(k => UNITS[k].tier === t && !UNITS[k].excl && !UNITS[k].ship));
   const SHIPS = Object.keys(UNITS).filter(k => UNITS[k].ship && !UNITS[k].excl); // 조합으로 만드는 히든 배
   const DRAW_POOL = [['tide', 0.5], ['ghost', 0.22], ['dragon', 0.22], ['star', 0.06]];
@@ -2687,7 +2700,8 @@ window.RENDER = window.RENDER2D;
     else hover = null;
   });
   document.addEventListener('pointerlockerror', () => say('마우스 가두기를 쓸 수 없는 환경이에요. 화면 가장자리에 마우스를 대면 이동합니다.'));
-  function placeMinimap() { const small = MOBILE && VW < 600; MM.w = small ? 120 : 150; MM.h = small ? 70 : 87; MM.x = 6; const bar = document.getElementById('mbar'), bh = bar && !bar.hidden ? bar.offsetHeight : 0, ch = cv.offsetHeight || VH; MM.y = VH - MM.h - 6 - bh * VH / ch; } // 왼쪽 아래 (오른쪽 아래는 버튼판)
+  function placeMinimap() { const small = MOBILE && VW < 600; MM.w = small ? 120 : 150; MM.h = small ? 70 : 87; MM.x = VW - MM.w - 6; const bar = document.getElementById('mbar'), bh = bar && !bar.hidden ? bar.offsetHeight : 0, ch = cv.offsetHeight || VH; MM.y = VH - MM.h - 6 - bh * VH / ch;
+    const bd = cv.parentElement; if (bd && bd.style) { bd.style.setProperty('--barH', bh + 'px'); bd.style.setProperty('--mmH', Math.round((MM.h + 10) * ch / VH) + 'px'); } } // 미니맵: 오른쪽 아래 (조합 막대 바로 위), 건물 카드는 그 위로 // 왼쪽 아래 (오른쪽 아래는 버튼판)
   const inMinimap = (p) => p.x >= MM.x && p.x <= MM.x + MM.w && p.y >= MM.y && p.y <= MM.y + MM.h;
   function mmToWorld(p) { return { x: (p.x - MM.x) / MM.w * WORLD.w, y: (p.y - MM.y) / MM.h * WORLD.h }; }
   // 화면 기준으로 고르기: 2D든 3D든 선원이 화면에 보이는 자리를 누르면 선택됨
@@ -3206,7 +3220,7 @@ window.RENDER = window.RENDER2D;
         ${roles(d)}
         <div class="specs"><div>공격력<b>${Math.round(d.dmg * RD.dmgMul(S, ME, d.tier) * RD.globalAtk(S, ME))}</b></div><div>초당 공격<b>${(aspd / d.cd).toFixed(1)}</b></div><div>사거리<b>${d.range}</b></div></div>
         <div class="skill mv">${d.move === 'fly' ? '비행 · 바다와 다른 구역 위를 자유롭게 날아다닙니다' : d.move === 'swim' ? '수영 · 바다를 헤엄쳐 어디든 갈 수 있습니다' : '도보 · 내 갑판과 스토리존 안에서만 걷고, 포탈 칸으로 오갑니다'}</div>
-        <div class="skill"><b>${d.skill.name}</b> · ${kind} 공격 · ${d.skill.desc}${d.bossMul ? ` · 보스·건물 ${d.bossMul}배` : ''}${aspd > 1 ? ` · <span style="color:var(--gold)">북 버프 +${Math.round((aspd - 1) * 100)}%</span>` : ''}</div>
+        <div class="skill"><b>${(d.skill ? d.skill.name : '고유 스킬 없음')}</b> · ${kind} 공격 · ${(d.skill ? d.skill.desc : '')}${d.bossMul ? ` · 보스·건물 ${d.bossMul}배` : ''}${aspd > 1 ? ` · <span style="color:var(--gold)">북 버프 +${Math.round((aspd - 1) * 100)}%</span>` : ''}</div>
         ${uses ? `<h3>이 선원으로 만들 수 있는 것</h3><div class="uses">${uses}</div>` : ''}
         <div class="row3b">
           <button data-a="combine" ${can ? '' : 'disabled'}>${T.need && !d.excl ? `랜덤 조합 <span class="cost">${haveN}/${T.need}</span>` : d.excl ? '조합 불가' : '최고 등급'}</button>
@@ -3290,7 +3304,7 @@ window.RENDER = window.RENDER2D;
     if (tab === 9) {
       book.innerHTML = RD.DRAW_POOL.map(([id, w]) => {
         const d = UNITS[id], T = TIERS[d.tier];
-        return `<div class="rc" data-id="${id}"><div class="rc-top">${badge(id, 'mini')}<div><div class="tr" style="color:${T.color}">${T.name}</div><div class="nm">${d.name} ${dtTag(d)}</div></div><span class="cost">확률 ${Math.round(w * 100)}%</span></div>${roles(d)}<div class="sk"><b style="color:var(--ink)">${d.skill.name}</b> · ${d.skill.desc}</div><div class="sk">스토리·보물상자 보상인 랜덤전용 뽑기로만 얻습니다.</div></div>`;
+        return `<div class="rc" data-id="${id}"><div class="rc-top">${badge(id, 'mini')}<div><div class="tr" style="color:${T.color}">${T.name}</div><div class="nm">${d.name} ${dtTag(d)}</div></div><span class="cost">확률 ${Math.round(w * 100)}%</span></div>${roles(d)}<div class="sk"><b style="color:var(--ink)">${(d.skill ? d.skill.name : '고유 스킬 없음')}</b> · ${(d.skill ? d.skill.desc : '')}</div><div class="sk">스토리·보물상자 보상인 랜덤전용 뽑기로만 얻습니다.</div></div>`;
       }).join('');
       return;
     }
@@ -3304,7 +3318,7 @@ window.RENDER = window.RENDER2D;
         ${roles(d)}
         <div class="ings">${RECIPES[id].map((t, k) => `<span class="ing${have[k] ? ' ok' : ''}" style="--tc:${TIERS[UNITS[t].tier].color}" title="${TIERS[UNITS[t].tier].name} · ${UNITS[t].dtype === 'm' ? '마뎀' : '물뎀'}${have[k] ? ' · 보유' : ' · 없음'}">${chipIcon(t)}<b>${UNITS[t].name}</b>${have[k] ? '<em>✓</em>' : ''}</span>`).join('')}${costHtml(id)}</div>
         ${needsHtml(id)}
-        <div class="sk"><b style="color:var(--ink)">${d.skill.name}</b> · ${d.skill.desc}</div>
+        <div class="sk"><b style="color:var(--ink)">${(d.skill ? d.skill.name : '고유 스킬 없음')}</b> · ${(d.skill ? d.skill.desc : '')}</div>
       </div>`;
     }).join('');
   }
@@ -3847,7 +3861,7 @@ window.RENDER = window.RENDER2D;
       const head = `<div class="mc-h"><span style="color:${T.color}">${T.name}</span> ${d.name}${us.length > 1 ? ` <small>외 ${us.length - 1}명</small>` : ''} <span class="dt ${d.dtype === 'm' ? 'm' : 'p'}">${d.dtype === 'm' ? '마뎀' : '물뎀'}</span></div>`;
       const aspd = RD.auraAspd(S, u), atk = Math.round(d.dmg * RD.dmgMul(S, ME, d.tier) * RD.globalAtk(S, ME));
       const kindL = { single: '단일', splash: '범위', chain: `연쇄 ${d.n}`, multi: `동시 ${d.n}` }[d.kind] || '';
-      const stat = `<div class="mc-stat"><span>공격력<b>${fmt(atk)}</b></span><span>초당 공격<b>${(aspd / d.cd).toFixed(1)}</b></span><span>사거리<b>${d.range}</b></span><span>${kindL}${d.move === 'fly' ? ' · 비행' : d.move === 'swim' ? ' · 수영' : ''}</span></div><div class="mc-skill"><b>${d.skill.name}</b> ${d.skill.desc}${d.bossMul ? ` · 보스·건물 ${d.bossMul}배` : ''}${aspd > 1 ? ` · <em>북 버프 +${Math.round((aspd - 1) * 100)}%</em>` : ''}</div>`;
+      const stat = `<div class="mc-stat"><span>공격력<b>${fmt(atk)}</b></span><span>초당 공격<b>${(aspd / d.cd).toFixed(1)}</b></span><span>사거리<b>${d.range}</b></span><span>${kindL}${d.move === 'fly' ? ' · 비행' : d.move === 'swim' ? ' · 수영' : ''}</span></div><div class="mc-skill">${d.skill ? `<b>${d.skill.name}</b> ${d.skill.desc}` : '<span class="ns">고유 스킬 없음</span>'}${d.bossMul ? ` · 보스·건물 ${d.bossMul}배` : ''}${aspd > 1 ? ` · <em>북 버프 +${Math.round((aspd - 1) * 100)}%</em>` : ''}</div>`;
       const row1 = mb('cmd', '공격', '이동', { attrs: ' data-c="amove"', hot: tmode === 'amove' }) + mb('cmd', '정지', '', { attrs: ' data-c="stop"' }) + mb('cmd', '홀드', '', { attrs: ' data-c="hold"' });
       const row2 = mb('combine', '랜덤 조합', T.need && !d.excl ? `${haveN}/${T.need}` : '불가', { hot: can, off: !can || !play }) + mb('type', '같은 선원', `${haveN}명`, { attrs: ` data-type="${u.type}"` }) + mb('sell', '판매', '+' + T.sell);
       const row3 = recs.map(r => {
@@ -3856,7 +3870,9 @@ window.RENDER = window.RENDER2D;
         const cost = (TT.wood ? `<i class="mi cost${pl.wood >= TT.wood ? ' ok' : ''}">🪵${TT.wood}</i>` : '') + (TT.gold ? `<i class="mi cost${pl.gold >= TT.gold ? ' ok' : ''}">💰${TT.gold}</i>` : '');
         return `<div class="mrec${r.ok ? ' hot' : ''}"><div class="mr-top"><b style="color:${TT.color}">${r.dd.name}</b><small>${TT.name}</small><button data-a="recipe" data-id="${r.id}" ${r.ok && play ? '' : 'disabled'}>조합</button></div><div class="mr-ing">${ings}${cost}</div></div>`;
       }).join('');
-      return `<div class="ms-h"><span style="color:${T.color}">${T.name}</span> ${d.name} <span class="dt ${d.dtype === 'm' ? 'm' : 'p'}">${d.dtype === 'm' ? '마뎀' : '물뎀'}</span></div>` + stat + '<!--CARD-->' + head + `<div class="mc-g">${row1}${row2}</div><!--REC-->` + (row3 ? `<button class="mr-title" data-a="recfold">조합법 · ${d.name}<span>▾</span></button><div class="mrecs">${row3}</div>` : `<button class="mr-title" data-a="recfold">조합법 · ${d.name}<span>▾</span></button><small class="mc-none">이 선원으로 만드는 조합식은 없어요</small>`);
+      const cnt = us.length > 1 ? `선택 ${us.length}명` : `${haveN}명 보유`;
+      const btns = `<div class="ms-btns">${mb('cmd', '홀드', '', { attrs: ' data-c="hold"', hot: us.every(o => o.order === 'hold') })}${mb('combine', '랜덤 조합', T.need && !d.excl ? `${haveN}/${T.need}` : '불가', { hot: can, off: !can || !play })}</div>`;
+      return `<div class="ms-h"><span style="color:${T.color}">${T.name}</span> ${d.name} <span class="dt ${d.dtype === 'm' ? 'm' : 'p'}">${d.dtype === 'm' ? '마뎀' : '물뎀'}</span><small class="ms-n">${cnt}</small></div>` + stat + btns + '<!--CARD--><!--REC-->' + (row3 ? `<button class="mr-title" data-a="recfold">조합법 · ${d.name}<span>▾</span></button><div class="mrecs">${row3}</div>` : `<button class="mr-title" data-a="recfold">조합법 · ${d.name}<span>▾</span></button><small class="mc-none">이 선원으로 만드는 조합식은 없어요</small>`);
     }
     const mon = selMon != null ? enemyById(selMon) : null;
     const wisps = pl.wisps.map((n, t) => n ? mb('wisp', TIERS[t].name + ' 위습', '×' + n, { attrs: ` data-t="${t}"`, hot: true, off: !play }) : '').filter(Boolean).slice(0, 3).join('');
@@ -3881,7 +3897,7 @@ window.RENDER = window.RENDER2D;
       if (d.tier !== last) { last = d.tier; html += `<span class="mb-sep" style="color:${T.color}">${T.name}</span>`; }
       html += `<button class="mb-it${b.ok ? ' ok' : b.n ? '' : ' none'}${barSel === id ? ' on' : ''}" data-a="bar" data-id="${id}" style="--tc:${T.color}" aria-label="${d.name}"><i style="background-image:url(${pic(id)})"></i><small>${b.n}/${b.N}</small></button>`;
     }
-    if (html !== barSig) { const L = document.getElementById('mbList'); const sl = L.scrollLeft; L.innerHTML = html; L.scrollLeft = sl; barSig = html; }
+    if (html !== barSig) { const L = document.getElementById('mbList'); const sl = L.scrollLeft; L.innerHTML = html; L.scrollLeft = sl; barSig = html; placeMinimap(); }
     if (barSel) barPop(barSel);
   }
   function barPop(id) {
@@ -3889,7 +3905,7 @@ window.RENDER = window.RENDER2D;
     const d = UNITS[id], T = TIERS[d.tier], pl = me(), b = barInfo(id);
     const ings = RECIPES[id].map((t, k) => `<i class="mi${b.have[k] ? ' ok' : ''}" style="--tc:${TIERS[UNITS[t].tier].color}">${UNITS[t].name}${b.have[k] ? '✓' : ''}</i>`).join('');
     const cost = (T.wood ? `<i class="mi cost${pl.wood >= T.wood ? ' ok' : ''}">🪵${T.wood}</i>` : '') + (T.gold ? `<i class="mi cost${pl.gold >= T.gold ? ' ok' : ''}">💰${T.gold}</i>` : '');
-    const h = `<div class="mr-top"><b style="color:${T.color}">${d.name}</b><small>${T.name} · ${d.dtype === 'm' ? '마뎀' : '물뎀'} · ${d.skill.name}</small><button data-a="recipe" data-id="${id}" ${b.ok && S.phase === 'play' ? '' : 'disabled'}>조합</button><button data-a="barx" aria-label="닫기">✕</button></div><div class="mr-ing">${ings}${cost}</div>`;
+    const h = `<div class="mr-top"><b style="color:${T.color}">${d.name}</b><small>${T.name} · ${d.dtype === 'm' ? '마뎀' : '물뎀'} · ${(d.skill ? d.skill.name : '고유 스킬 없음')}</small><button data-a="recipe" data-id="${id}" ${b.ok && S.phase === 'play' ? '' : 'disabled'}>조합</button><button data-a="barx" aria-label="닫기">✕</button></div><div class="mr-ing">${ings}${cost}</div>`;
     if (pp.dataset.sig !== h) { pp.innerHTML = h; pp.dataset.sig = h; }
     pp.hidden = false;
   }
@@ -3911,10 +3927,11 @@ window.RENDER = window.RENDER2D;
         const sp = document.getElementById('mstat'); if (sp) { sp.innerHTML = st; sp.dataset.has = st ? '1' : ''; }
         mcardSig = h;
       }
-      card.hidden = !started || !$('ov').hidden;
-      const rp = document.getElementById('mrec'); if (rp) rp.hidden = card.hidden || !rp.dataset.has || document.body.classList.contains('m-menu');
-      const sp = document.getElementById('mstat'); if (sp) sp.hidden = card.hidden || !sp.dataset.has;
-      mBar(card.hidden);
+      const base = !started || !$('ov').hidden;
+      card.hidden = base || !card.innerHTML.trim();
+      const rp = document.getElementById('mrec'); if (rp) rp.hidden = base || !rp.dataset.has || document.body.classList.contains('m-menu');
+      const sp = document.getElementById('mstat'); if (sp) sp.hidden = base || !sp.dataset.has;
+      mBar(base);
     }
     const hud = document.getElementById('mhud'); if (hud) hud.hidden = !started;
     const lg = document.getElementById('mlog'); if (lg) lg.classList.toggle('show', performance.now() < mlogT);
