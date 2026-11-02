@@ -387,6 +387,19 @@ body:not(.m) .msheet:not([hidden]) { position: absolute; inset: auto 8px 8px aut
   .mrotate small { display: block; font-size: 13px; color: var(--muted); margin-top: 4px; }
 }
 body.m .mcard:not([hidden]) { max-height: 58vh; overflow-y: auto; }
+
+.wpick:not([hidden]) { position: absolute; inset: 0; z-index: 9; display: grid; place-items: center; background: rgba(4,12,18,0.6); }
+.wpick[hidden] { display: none; }
+.wp-card { width: min(360px, 92%); background: #13324a; border: 2px solid var(--gold); border-radius: 14px; padding: 12px; }
+.wp-head { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+.wp-head b { flex: 1; }
+.wp-head button { padding: 4px 10px; }
+.wp-list { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.wp-list button { display: grid; justify-items: center; gap: 4px; padding: 10px 6px; }
+.wp-list button small { color: var(--muted); font-size: 11px; }
+.ship-note { border-style: dashed !important; }
+.wp-list .badge, .ship-note .badge { display: inline-block; width: 44px; height: 44px; border-radius: 10px; border: 2px solid; background-size: cover; vertical-align: middle; }
+.ship-note .badge { width: 30px; height: 30px; }
 </style>
 </head><body>
 <div class="wrap">
@@ -410,6 +423,7 @@ body.m .mcard:not([hidden]) { max-height: 58vh; overflow-y: auto; }
       </div>
       <div class="mlog" id="mlog"></div>
       <div class="mcard" id="mcard" hidden></div>
+      <div class="wpick" id="wpick" hidden><div class="wp-card"><div class="wp-head"><b>흔함 위습 · 원하는 선원 고르기</b><button data-a="wpclose" aria-label="닫기">✕</button></div><div class="wp-list"></div></div></div>
       <div class="msheet" id="msheet" hidden>
         <div class="ms-head"><b>📖 조합표</b><button id="msAll">전체 메뉴</button><button id="msClose" aria-label="닫기">✕</button></div>
         <div class="ms-body" id="msBody"></div>
@@ -530,7 +544,7 @@ body.m .mcard:not([hidden]) { max-height: 58vh; overflow-y: auto; }
         <dt>Backspace · Tab</dt><dd>내 라인 · 스토리존 화면</dd>
         <dt>Space</dt><dd>마지막 알림 위치 (보스, 스토리, 보물상자)</dd>
         <dt>F2 · F3 · F4</dt><dd>강화소 · 골드 도박장 · 유닛 도박장 선택 (두 번 누르면 화면 이동)</dd>
-        <dt>Q · W · E</dt><dd>강화소: Q 하급, W 상급 강화 · 도박장: Q 초급, W 중급, E 고급</dd>
+        <dt>Q · W · E · R · T</dt><dd>강화소: 흔함·안흔함 / 희귀함 / 전설 / 히든 / 영원·불멸·초월 강화 · 도박장: Q 초급, W 중급, E 고급</dd>
         <dt>R · C</dt><dd>랜덤전용 뽑기 · 랜덤 조합</dd>
         <dt>F10</dt><dd>일시정지</dd>
       </dl>
@@ -679,7 +693,10 @@ const RD = (() => {
     baseHp: 34, hpGrowth: 1.19, bossHpMul: 20, monsterSpeed: 64,
     killGold: (w) => 2 + Math.floor(w / 8), bossGold: (w) => 150 + w * 10, bossWood: 2,
     fastBoss: { t: 20, gold: 100 },
-    upCost: [(lv) => 40 + 30 * lv, (lv) => 90 + 60 * lv], upStep: 0.12, upMax: 20, // 강화 최대 단계
+    // 강화: 등급 묶음별로 따로 (흔함·안흔함 / 희귀함 / 전설 / 히든 / 특수: 영원·불멸·초월·특수). 20골드부터 단계마다 비싸짐
+    upTracks: ['흔함·안흔함', '희귀함', '전설', '히든', '영원·불멸·초월'],
+    upCostFn: (lv) => Math.round(20 + 14 * lv + 1.2 * lv * lv), upStep: 0.1, upMax: 30,
+    pirateShipChance: 0.15, // 라운드가 끝날 때 해적선(안흔함)이 대신 합류할 확률
     summonOdds: [0.88, 0.11, 0.01, 0, 0],
     woodShop: [{ tier: 1, cost: 3 }, { tier: 2, cost: 8 }],
     armorK: 50, auraR: 110, bigR: 520,
@@ -697,8 +714,8 @@ const RD = (() => {
     // 골드 도박장: 골드만 걸고 골드만 받음 (자주 맞고, 기대값은 본전 근처)
     gambleGold: [
       { name: '초급 골드 도박', wave: 1, cost: 100, table: [[0.3, {}, '꽝'], [0.45, { gold: 120 }, '골드 120'], [0.2, { gold: 150 }, '골드 150'], [0.05, { gold: 300 }, '골드 300!']] },
-      { name: '중급 골드 도박', wave: 20, cost: 500, table: [[0.3, {}, '꽝'], [0.45, { gold: 600 }, '골드 600'], [0.2, { gold: 750 }, '골드 750'], [0.05, { gold: 1500 }, '골드 1500!']] },
-      { name: '고급 골드 도박', wave: 30, cost: 1500, table: [[0.3, {}, '꽝'], [0.45, { gold: 1800 }, '골드 1800'], [0.2, { gold: 2200 }, '골드 2200'], [0.05, { gold: 4500 }, '골드 4500!!']] },
+      { name: '중급 골드 도박', wave: 1, cost: 500, table: [[0.3, {}, '꽝'], [0.45, { gold: 600 }, '골드 600'], [0.2, { gold: 750 }, '골드 750'], [0.05, { gold: 1500 }, '골드 1500!']] },
+      { name: '고급 골드 도박', wave: 1, cost: 1500, table: [[0.3, {}, '꽝'], [0.45, { gold: 1800 }, '골드 1800'], [0.2, { gold: 2200 }, '골드 2200'], [0.05, { gold: 4500 }, '골드 4500!!']] },
     ],
     // 유닛 도박장: 골드 + 나무를 걸고 선원을 받음 (특수 등급까지 노릴 수 있음)
     gambleUnit: [ // 초급: 흔함·안흔함 / 중급: 안흔함·희귀함 / 고급: 랜덤전용 선원
@@ -718,21 +735,23 @@ const RD = (() => {
     { name: '영원', color: '#2fe0c0', sell: 1200, need: 0, wood: 3 },
     { name: '불멸', color: '#c6ff3a', sell: 1500, need: 0, wood: 4, gold: 800 },
     { name: '초월', color: '#fff3a8', sell: 2000, need: 0, wood: 5, gold: 1500 },
+    { name: '특수', color: '#9aa8c8', sell: 500, need: 0 }, // 블랙펄 등 (조합 재료용 특수 유닛)
   ];
 
   // 스토리: 순서대로 하나씩 등장, 모든 플레이어가 함께 공격. 격파 보상은 플레이어마다 각자 받음.
   // wisps: [흔함, 안흔함, 희귀함, 전설, 히든] 위습 개수 / draws: 랜덤전용 뽑기 횟수
+  // wisps: [흔함, 안흔함, 희귀함, 전설, 히든] 위습 / units: 바로 주는 선원 / ship: 랜덤 히든 배 / pick: 둘 중 하나 위습
   const STORIES = [
     { name: '해변 망루',   hp: 5000,     armor: 5,  color: '#c9a36b', reward: { gold: 200, wisps: [2, 0, 0, 0, 0] } },
-    { name: '밀수꾼 창고', hp: 13500,     armor: 10, color: '#9c7a4a', reward: { gold: 300, wood: 2 } },
-    { name: '해군 초소',   hp: 36500,    armor: 18, color: '#6f8fb0', reward: { wisps: [0, 1, 0, 0, 0], draws: 1 } },
-    { name: '산호 요새',   hp: 98400,    armor: 26, color: '#ff8a7a', reward: { wood: 3, wisps: [0, 2, 0, 0, 0] } },
-    { name: '안개섬 등대', hp: 265700,    armor: 34, color: '#c8d6e0', reward: { gold: 500, wisps: [0, 0, 1, 0, 0] } },
-    { name: '해적 감옥',   hp: 717400,   armor: 44, color: '#7a6a8a', reward: { wood: 4, draws: 1 } },
-    { name: '심해 신전',   hp: 1937100,   armor: 54, color: '#2fb8c8', reward: { wisps: [0, 0, 2, 0, 0] } },
-    { name: '해군 본부',   hp: 5230200,  armor: 66, color: '#e6eef2', reward: { wisps: [0, 0, 0, 1, 0], gold: 800 } },
-    { name: '폭풍의 성채', hp: 14121500,  armor: 80, color: '#ffe066', reward: { wood: 6, wisps: [0, 0, 1, 0, 0], draws: 1 } },
-    { name: '대해적 왕궁', hp: 38128000,  armor: 96, color: '#ffd23f', reward: { wisps: [0, 0, 0, 0, 1] } },
+    { name: '밀수꾼 창고', hp: 13500,    armor: 10, color: '#9c7a4a', reward: { gold: 300, wisps: [2, 1, 0, 0, 0] } },
+    { name: '해군 초소',   hp: 36500,    armor: 18, color: '#6f8fb0', reward: { gold: 400, wisps: [2, 1, 0, 0, 0], wood: 1 } },
+    { name: '산호 요새',   hp: 98400,    armor: 26, color: '#ff8a7a', reward: { gold: 1000, wood: 3, wisps: [2, 2, 0, 0, 0] } },
+    { name: '안개섬 등대', hp: 265700,   armor: 34, color: '#c8d6e0', reward: { gold: 1500, wisps: [2, 0, 1, 0, 0], wood: 3 } },
+    { name: '해적 감옥',   hp: 717400,   armor: 44, color: '#7a6a8a', reward: { gold: 2000, wisps: [2, 2, 0, 0, 0], wood: 4 } },
+    { name: '심해 신전',   hp: 1937100,  armor: 54, color: '#2fb8c8', reward: { gold: 3000, wisps: [4, 0, 0, 0, 0], units: ['blackpearl'], wood: 4 } },
+    { name: '해군 본부',   hp: 5230200,  armor: 66, color: '#e6eef2', reward: { gold: 4000, wisps: [8, 0, 2, 0, 0], wood: 5 } },
+    { name: '폭풍의 성채', hp: 14121500, armor: 80, color: '#ffe066', reward: { gold: 10000, wood: 6, wisps: [0, 4, 0, 0, 0], ship: 1 } },
+    { name: '대해적 왕궁', hp: 38128000, armor: 96, color: '#ffd23f', reward: { pick: [3, 4] } },
   ];
   const CHEST = { name: '난파선 보물상자', hpMul: 60, armor: 10, reward: { draws: 1, wood: 1 } };
 
@@ -853,6 +872,23 @@ const RD = (() => {
                skill: { name: '창세의 해일', type: 'tsunami', chance: 0.12, mul: 4, slow: [0.7, 3], desc: '12% 확률로 넓은 범위 대해일' } },
     crown:   { name: '전설의 왕관', tier: 7, glyph: '관', look: 'king', accent: '#fff3a8', roles: ['단일', '보스킬러', '버프'], dmg: 4500, cd: 0.4, range: 330, kind: 'single', crit: [0.4, 3], bossMul: 3, aura: { globalAtk: 0.2 },
                skill: { name: '왕관의 심판', type: 'execute', chance: 0.14, mul: 15, nova: 160, desc: '전체 공격력 +20%, 14% 확률로 15배 심판' } },
+
+    // ---- 배 (해적선으로 만드는 히든 배 · 바다를 항해할 수 있음) ----
+    pship:   { name: '해적선', tier: 1, excl: true, ship: true, move: 'swim', glyph: '선', look: 'cannon', accent: '#8b5a2b', roles: ['광역'], dmg: 45, cd: 1.3, range: 210, kind: 'splash', r: 60,
+               skill: { name: '측면 포격', type: 'meteor', chance: 0.12, n: 3, r: 55, mul: 1.5, desc: '라운드 보상으로 15% 확률로 합류 · 12% 확률로 포탄 3발' } },
+    galleon: { name: '진홍 갤리온', tier: 4, ship: true, move: 'swim', glyph: '갤', look: 'cannon', accent: '#d8343a', roles: ['광역'], dmg: 1300, cd: 1.0, range: 300, kind: 'splash', r: 110,
+               skill: { name: '일제 사격', type: 'meteor', chance: 0.14, n: 8, r: 85, mul: 2, desc: '14% 확률로 포탄 8발' } },
+    whale:   { name: '고래 모함', tier: 4, ship: true, move: 'swim', glyph: '고', look: 'cannon', accent: '#e8e8f0', roles: ['광역', '버프'], dmg: 900, cd: 0.9, range: 290, kind: 'chain', n: 7, aura: { globalAtk: 0.1 },
+               skill: { name: '모함 출격', type: 'rally', chance: 0.1, mul: 1.35, dur: 4, desc: '전체 공격력 +10%, 10% 확률로 전체 공속 +35%' } },
+    galley:  { name: '해상 식당선', tier: 4, ship: true, move: 'swim', glyph: '식', look: 'cannon', accent: '#ffb86b', roles: ['버프'], dmg: 600, cd: 0.8, range: 260, kind: 'multi', n: 3, aura: { adjAspd: 0.35 },
+               skill: { name: '만찬', type: 'rally', chance: 0.12, mul: 1.3, dur: 4, desc: '주변 선원 공속 +35%, 12% 확률로 전체 공속 +30%' } },
+    ark:     { name: '방주 전함', tier: 4, ship: true, move: 'swim', glyph: '방', look: 'cannon', accent: '#6a7a8a', roles: ['광역', '방깎', '마방깎'], dmg: 1000, cd: 1.1, range: 290, kind: 'splash', r: 120, shred: [15, 60, 3], mshred: [15, 60, 3],
+               skill: { name: '철벽 포화', type: 'shred', chance: 0.12, r: 160, amt: 60, dur: 5, mul: 1.5, desc: '12% 확률로 넓은 범위 방어력 -60' } },
+    sunship: { name: '태양 범선', tier: 4, ship: true, move: 'swim', glyph: '태', look: 'cannon', accent: '#ffd23f', roles: ['다중', '단일'], dmg: 1200, cd: 0.35, range: 290, kind: 'multi', n: 4,
+               skill: { name: '태양포', type: 'execute', chance: 0.12, mul: 8, nova: 100, desc: '12% 확률로 8배 태양포 (주변 피해)' } },
+    // ---- 특수: 블랙펄 (스토리 7 보상, 모든 초월 조합의 재료) ----
+    blackpearl: { name: '블랙펄', tier: 8, excl: true, ship: true, move: 'swim', glyph: '흑', look: 'cannon', accent: '#3a3a4a', roles: ['광역', '감속'], dmg: 1600, cd: 0.9, range: 300, kind: 'splash', r: 120, slow: [0.45, 2],
+               skill: { name: '저주받은 포격', type: 'meteor', chance: 0.14, n: 8, r: 90, mul: 2, desc: '심해 신전 보상 · 모든 초월 조합에 꼭 필요 · 14% 확률로 유령 포탄 8발' } },
     // ---- 랜덤전용: 스토리·보물상자 보상인 '랜덤전용 뽑기'로만 얻을 수 있음 ----
     tide:    { name: '조류술사', tier: 2, excl: true, glyph: '조', look: 'mage', accent: '#4fd1ff', roles: ['감속', '방깎'], dmg: 110, cd: 0.9, range: 230, kind: 'splash', r: 70, slow: [0.35, 2], shred: [10, 40, 3],
                skill: { name: '역류', type: 'shred', chance: 0.12, r: 130, amt: 45, dur: 5, mul: 2, slow: [0.5, 2], desc: '12% 확률로 범위 방어력 -45, 감속' } },
@@ -922,14 +958,22 @@ const RD = (() => {
     sunking:   ['saint', 'flame', 'outlaw'],           // 불멸 = 전설 + 전설 + 전설
     eternity:  ['chrono', 'glacier', 'rune', 'drummer'], // 불멸 = 히든 + 전설 + 희귀함 + 안흔함
 
-    worldsea:  ['abyss', 'glacier', 'dancer', 'frost'], // 초월 = 히든 + 전설 + 희귀함 + 안흔함
-    crown:     ['saint', 'warlord', 'marshal'],        // 초월 = 전설 + 전설 + 희귀함
+    worldsea:  ['blackpearl', 'abyss', 'glacier', 'dancer'], // 초월 = 블랙펄 + 히든 + 전설 + 희귀함 (초월은 항상 블랙펄 필요)
+    crown:     ['blackpearl', 'saint', 'warlord', 'marshal'], // 초월 = 블랙펄 + 전설 + 전설 + 희귀함
+
+    // ---- 배 조합 (해적선 + …) → 히든 배 ----
+    galleon: ['pship', 'flame', 'iron'],               // 해적선 + 전설 + 희귀함
+    whale:   ['pship', 'thunder', 'warlord', 'marshal'], // 해적선 + 전설 + 전설 + 희귀함
+    galley:  ['pship', 'drummer', 'twin', 'sword'],     // 해적선 + 안흔함 + 안흔함 + 흔함
+    ark:     ['pship', 'iron', 'storm', 'acid'],        // 해적선 + 희귀함 + 희귀함 + 안흔함
+    sunship: ['pship', 'gale', 'sniper'],               // 해적선 + 희귀함 + 안흔함
 
   };
   // ---- 이동 방식: 대부분 도보(자기 갑판·스토리존 안에서만, 포탈로 오감), 일부는 비행·수영으로 어디든 ----
   const MOVE_TYPES = { gale: 'fly', storm: 'fly', dragon: 'fly', star: 'fly', chrono: 'fly', frost: 'swim', witch: 'swim', abyss: 'swim', tide: 'swim', ghost: 'swim' };
   for (const k in MOVE_TYPES) if (UNITS[k]) UNITS[k].move = MOVE_TYPES[k];
-  const BY_TIER = [0, 1, 2, 3, 4, 5, 6, 7].map(t => Object.keys(UNITS).filter(k => UNITS[k].tier === t && !UNITS[k].excl));
+  const BY_TIER = [0, 1, 2, 3, 4, 5, 6, 7, 8].map(t => Object.keys(UNITS).filter(k => UNITS[k].tier === t && !UNITS[k].excl && !UNITS[k].ship));
+  const SHIPS = Object.keys(UNITS).filter(k => UNITS[k].ship && !UNITS[k].excl); // 조합으로 만드는 히든 배
   const DRAW_POOL = [['tide', 0.5], ['ghost', 0.22], ['dragon', 0.22], ['star', 0.06]];
 
   // ---- 결정론 유틸 ----
@@ -1014,7 +1058,7 @@ const RD = (() => {
       players: [],
     };
     for (let p = 0; p < nPlayers; p++) s.players.push({
-      gold: CFG.startGold, wood: 0, up: [0, 0], wisps: [0, 0, 0, 0, 0], draws: 0,
+      gold: CFG.startGold, wood: 0, up: [0, 0, 0, 0, 0], wisps: [0, 0, 0, 0, 0], draws: 0,
       kills: 0, death: CFG.deathCount, overT: 0, alive: true, rally: { mul: 1, t: 0 }, bossT: -1,
     });
     for (let p = 0; p < nPlayers; p++) grant(s, p, CFG.startUnits);
@@ -1039,8 +1083,10 @@ const RD = (() => {
   function newUnit(s, p, type) {
     const pt = deckPoint(s, p); return addUnit(s, p, type, pt.x, pt.y);
   }
-  function grant(s, p, n) {
-    for (let k = 0; k < n; k++) newUnit(s, p, pickUnit(s, pickTier(s, CFG.summonOdds)));
+  function grant(s, p, n, round) {
+    const ship = round && rand(s) < CFG.pirateShipChance; // 가끔 해적선이 대신 합류
+    for (let k = 0; k < n; k++) newUnit(s, p, ship && k === 0 ? 'pship' : pickUnit(s, pickTier(s, CFG.summonOdds)));
+    if (ship) s.events.push({ e: 'pship', p });
     s.events.push({ e: 'grant', p, n });
   }
 
@@ -1058,11 +1104,14 @@ const RD = (() => {
     s.events.push({ e: 'chestUp', x, y });
   }
   function giveReward(s, r) {
-    for (const pl of s.players) {
-      if (!pl.alive) continue;
+    s.players.forEach((pl, p) => {
+      if (!pl.alive) return;
       pl.gold += r.gold || 0; pl.wood += r.wood || 0; pl.draws += r.draws || 0;
       if (r.wisps) r.wisps.forEach((n, t) => { pl.wisps[t] += n; });
-    }
+      if (r.units) for (const t of r.units) { const u = newUnit(s, p, t); s.events.push({ e: 'rewardUnit', p, id: u.id, type: t }); }
+      if (r.ship) { const t = SHIPS[Math.floor(rand(s) * SHIPS.length)]; const u = newUnit(s, p, t); s.events.push({ e: 'rewardUnit', p, id: u.id, type: t }); }
+      if (r.pick) { const t = r.pick[Math.floor(rand(s) * r.pick.length)]; pl.wisps[t]++; s.events.push({ e: 'rewardPick', p, tier: t }); }
+    });
   }
 
   // ---- 조합 ----
@@ -1106,7 +1155,8 @@ const RD = (() => {
     for (const o of s.units) { if (o === u) continue; const a = UNITS[o.type].aura; if (a && a.adjAspd && d2(o, u) <= CFG.auraR * CFG.auraR) b += a.adjAspd; }
     return 1 + Math.min(b, 0.75);
   }
-  const dmgMul = (s, p, tier) => 1 + CFG.upStep * (tier <= 1 ? s.players[p].up[0] : s.players[p].up[1]);
+  const upTrackOf = (tier) => tier <= 1 ? 0 : tier === 2 ? 1 : tier === 3 ? 2 : tier === 4 ? 3 : 4;
+  const dmgMul = (s, p, tier) => 1 + CFG.upStep * (s.players[p].up[upTrackOf(tier)] || 0);
   function removeUnits(s, ids) { const set = new Set(ids); s.units = s.units.filter(u => !set.has(u.id)); }
 
   // ---- 액션: 모든 입력은 {type, p, ...} 하나로. 멀티플레이 때 이것만 주고받습니다 ----
@@ -1129,7 +1179,9 @@ const RD = (() => {
         // 맵 위 위습을 눌렀으면 그 자리에서, 아니면 갑판 가운데에서 등장
         const D = GEO[p].deck, inDeck = a.x != null && a.x >= D.x0 - 20 && a.x <= D.x1 + 20 && a.y >= D.y0 - 20 && a.y <= D.y1 + 20;
         const pt = inDeck ? { x: a.x, y: a.y } : deckPoint(s, p);
-        const u = addUnit(s, p, pickUnit(s, t), pt.x, pt.y); s.events.push({ e: 'wispUsed', p, id: u.id, tier: t }); return true;
+        // 흔함 위습은 원하는 흔함 선원을 고를 수 있음
+        const type = t === 0 && a.pick && BY_TIER[0].includes(a.pick) ? a.pick : pickUnit(s, t);
+        const u = addUnit(s, p, type, pt.x, pt.y); s.events.push({ e: 'wispUsed', p, id: u.id, tier: t }); return true;
       }
       case 'gamble': { // 도박장: kind 'gold'(골드만) | 'unit'(골드+나무 → 선원)
         const unitG = a.kind === 'unit', G = (unitG ? CFG.gambleUnit : CFG.gambleGold)[a.tier | 0];
@@ -1214,8 +1266,9 @@ const RD = (() => {
         s.events.push({ e: 'sell', p, x: u.x, y: u.y }); return true;
       }
       case 'upgrade': {
-        if (pl.up[a.track] >= CFG.upMax) return false;
-        const c = CFG.upCost[a.track](pl.up[a.track]); if (pl.gold < c) return false;
+        const tr = a.track | 0; if (tr < 0 || tr >= CFG.upTracks.length) return false;
+        if (pl.up[tr] >= CFG.upMax) return false;
+        const c = CFG.upCostFn(pl.up[tr]); if (pl.gold < c) return false;
         pl.gold -= c; pl.up[a.track]++; s.events.push({ e: 'station', p, kind: 'upgrade', track: a.track, lv: pl.up[a.track] }); return true;
       }
     }
@@ -1512,7 +1565,7 @@ const RD = (() => {
     s.wave++; s.waveT = 0; s.spawned = 0;
     s.events.push({ e: 'wave', wave: s.wave });
     if (CFG.chestWaves.includes(s.wave)) spawnChest(s);
-    s.players.forEach((pl, p) => { if (pl.alive) grant(s, p, CFG.unitsPerWave); });
+    s.players.forEach((pl, p) => { if (pl.alive) grant(s, p, CFG.unitsPerWave, true); });
   }
   // 맵 위에 놓이는 위습 자리 (갑판 위쪽 모서리에 등급순으로 한 줄)
   function wispSpots(s, p) {
@@ -1532,7 +1585,7 @@ const RD = (() => {
 
   return { WORLD, LANE, GEO, STORY, PCOLORS, PNAMES, CFG, TIERS, UNITS, RECIPES, BY_TIER, STORIES, CHEST, DRAW_POOL,
     create, dispatch, step, combinable, recipeUnits, recipeHave, usesOf, unitById, pathPos, hpFor, isBossWave, waveInfo,
-    dmgMul, globalAtk, auraAspd, countOf, nextReq, wispSpots, PADS, STATIONS, ISLAND, zoneOf, zoneAt, isFree, deckBox };
+    dmgMul, upTrackOf, SHIPS, globalAtk, auraAspd, countOf, nextReq, wispSpots, PADS, STATIONS, ISLAND, zoneOf, zoneAt, isFree, deckBox };
 })();
 if (typeof module !== 'undefined') module.exports = RD;
 </script><script>
@@ -1604,6 +1657,14 @@ window.DESIGNS = {
   // ---- 초월 ----
   worldsea:{ outfit: '#4ad8f0', pants: '#0a5a7a', skin: '#c8f4ff', hair: '#7af0ff', hairStyle: 'long', hat: 'coralcrown', hatC: '#7af0ff', weapon: 'wateror', extras: ['halo', 'cape', 'starry'], cape: '#1a8ab0', build: 1.15 },
   crown:   { outfit: '#fff8e0', pants: '#b08a2a', skin: '#e8b98c', hair: '#fff3a8', hairStyle: 'wild', hat: 'kingcrown', hatC: '#fff3a8', weapon: 'goldkatana', extras: ['cape', 'fur', 'halo', 'epaulets'], cape: '#ffd23f', build: 1.25 },
+  // ---- 배 ----
+  pship: { outfit: '#6a4a2a', pants: '#3a2a1a', skin: '#e8b98c', hair: '#2a1a10', hairStyle: 'bald', hat: 'none', weapon: 'bigcannon', extras: [], build: 1, ship: true, hull: '#7a4e2a', sail: '#f2ead8', trim: '#1a1a1a', flag: '#d8343a', size: 1.0, masts: 2 },
+  galleon: { outfit: '#6a4a2a', pants: '#3a2a1a', skin: '#e8b98c', hair: '#2a1a10', hairStyle: 'bald', hat: 'none', weapon: 'bigcannon', extras: [], build: 1, ship: true, hull: '#8a2a22', sail: '#f6d8c8', trim: '#c8281e', flag: '#ffd23f', size: 1.2, masts: 3 },
+  whale: { outfit: '#6a4a2a', pants: '#3a2a1a', skin: '#e8b98c', hair: '#2a1a10', hairStyle: 'bald', hat: 'none', weapon: 'bigcannon', extras: [], build: 1, ship: true, hull: '#3a5a7a', sail: '#e8f2ff', trim: '#1a3a5a', flag: '#7ad0ff', size: 1.3, masts: 2 },
+  galley: { outfit: '#6a4a2a', pants: '#3a2a1a', skin: '#e8b98c', hair: '#2a1a10', hairStyle: 'bald', hat: 'none', weapon: 'bigcannon', extras: [], build: 1, ship: true, hull: '#a86a3a', sail: '#fff6e0', trim: '#e07a2a', flag: '#ffffff', size: 1.1, masts: 2 },
+  ark: { outfit: '#6a4a2a', pants: '#3a2a1a', skin: '#e8b98c', hair: '#2a1a10', hairStyle: 'bald', hat: 'none', weapon: 'bigcannon', extras: [], build: 1, ship: true, hull: '#4a5560', sail: '#d0d8e0', trim: '#2a3a4a', flag: '#7aff9a', size: 1.3, masts: 3 },
+  sunship: { outfit: '#6a4a2a', pants: '#3a2a1a', skin: '#e8b98c', hair: '#2a1a10', hairStyle: 'bald', hat: 'none', weapon: 'bigcannon', extras: [], build: 1, ship: true, hull: '#c88a20', sail: '#fff2b0', trim: '#ff8a00', flag: '#ffe066', size: 1.15, masts: 3 },
+  blackpearl: { outfit: '#6a4a2a', pants: '#3a2a1a', skin: '#e8b98c', hair: '#2a1a10', hairStyle: 'bald', hat: 'none', weapon: 'bigcannon', extras: [], build: 1, ship: true, hull: '#141418', sail: '#2a2a32', trim: '#0a0a0c', flag: '#c8f0ff', size: 1.35, masts: 3 },
 };
 // 무기 종류 → 공격 동작 묶음
 window.WEAPON_KIND = {
@@ -1623,6 +1684,7 @@ window.FIG2D = (() => {
   function draw(c, type, p) {
     const D = window.DESIGNS[type] || window.DESIGNS.sword, d = RD.UNITS[type];
     const t = p.t || 0, ak = p.ak || 0, lite = p.lite;
+    if (D.ship) { drawShip(c, D, t, ak); return; }
     const rr = (x, y, w, h, r) => { c.beginPath(); c.roundRect(x, y, w, h, r); };
     const fillG = (x0, y0, x1, y1, a, b) => { if (lite) return a; const g = c.createLinearGradient(x0, y0, x1, y1); g.addColorStop(0, a); g.addColorStop(1, b); return g; };
     c.save(); c.lineJoin = 'round'; c.lineCap = 'round'; c.lineWidth = 1.6; c.strokeStyle = ink;
@@ -1812,6 +1874,28 @@ window.FIG2D = (() => {
     }
   }
 
+  // 배 그리기: 발끝(0,0) 기준, 오른쪽이 뱃머리
+  function drawShip(c, D, t, ak) {
+    const z = D.size || 1, rock = Math.sin(t * 2.2) * 0.05;
+    c.save(); c.lineJoin = 'round'; c.lineWidth = 1.6; c.strokeStyle = ink; c.rotate(rock); c.scale(z, z);
+    // 돛대 · 돛
+    const ms = D.masts || 2, xs = ms === 3 ? [-9, 1, 10] : [-6, 6];
+    xs.forEach((x, k) => {
+      const h = k === Math.floor(ms / 2) ? 34 : 27;
+      c.fillStyle = '#4a3020'; c.fillRect(x - 1, -h - 6, 2, h);
+      const bil = Math.sin(t * 3 + k) * 1.2;
+      c.fillStyle = D.sail; c.beginPath(); c.moveTo(x - 6, -h - 2); c.quadraticCurveTo(x + bil + 1, -h * 0.65 - 4, x - 6, -12); c.lineTo(x + 6, -12); c.quadraticCurveTo(x + 7 + bil, -h * 0.65 - 4, x + 6, -h - 2); c.closePath(); c.fill(); c.stroke();
+      c.fillStyle = D.trim; c.fillRect(x - 6, -h * 0.6 - 4, 12, 2);
+      if (k === Math.floor(ms / 2)) { c.fillStyle = D.flag; c.beginPath(); c.moveTo(x + 1, -h - 6); c.lineTo(x + 9 + Math.sin(t * 6) * 1.5, -h - 4); c.lineTo(x + 1, -h - 2); c.closePath(); c.fill(); c.stroke(); }
+    });
+    // 선체
+    c.fillStyle = D.hull; c.beginPath(); c.moveTo(-18, -13); c.lineTo(20, -13); c.quadraticCurveTo(17, -2, 9, 0); c.lineTo(-12, 0); c.quadraticCurveTo(-17, -4, -18, -13); c.closePath(); c.fill(); c.stroke();
+    c.fillStyle = D.trim; c.fillRect(-17, -12, 36, 2.4);
+    c.fillStyle = '#111'; for (let k = -10; k <= 10; k += 6) { c.beginPath(); c.arc(k, -7, 1.6, 0, 7); c.fill(); }
+    // 포구 섬광
+    if (ak > 0) { c.fillStyle = `rgba(255,200,90,${ak})`; c.beginPath(); c.arc(23, -7, 4 * ak + 1, 0, 7); c.fill(); }
+    c.restore();
+  }
   // 초상화 (패널·조합표 배지용)
   const cache = {};
   function portrait(type) {
@@ -2534,11 +2618,19 @@ window.RENDER = window.RENDER2D;
     for (const o of RD.wispSpots(S, ME)) { const p = toScreen(o.x, o.y, 8), r = pickRadius(o) * 0.8; if ((p.x - sp.x) ** 2 + (p.y - sp.y) ** 2 <= r * r) return o; }
     return null;
   }
-  function useWisp(tier, at) {
+  function useWisp(tier, at, pick) {
     const pl = me();
     if (!pl.wisps[tier]) { say(`${TIERS[tier].name} 위습이 없습니다.`); return; }
-    const a = { type: 'wisp', tier }; if (at) { a.x = at.x; a.y = at.y; }
+    if (tier === 0 && !pick) { openPicker(at); return; } // 흔함 위습: 원하는 흔함 선원 고르기
+    const a = { type: 'wisp', tier }; if (at) { a.x = at.x; a.y = at.y; } if (pick) a.pick = pick;
     if (act(a)) selNew();
+  }
+  let pickAt = null;
+  function openPicker(at) {
+    pickAt = at || null;
+    const el = document.getElementById('wpick'); if (!el) { useWisp(0, at, RD.BY_TIER[0][0]); return; }
+    el.querySelector('.wp-list').innerHTML = RD.BY_TIER[0].map(t => { const d = UNITS[t]; return `<button data-a="wpick" data-type="${t}">${badge(t, 'mini')}<b>${d.name}</b><small>${d.roles.join('·')} · ${d.dtype === 'm' ? '마뎀' : '물뎀'}</small></button>`; }).join('');
+    el.hidden = false;
   }
   function order(mode, w) {
     if (!selIds.length) return;
@@ -2661,6 +2753,8 @@ window.RENDER = window.RENDER2D;
     else if (a === 'diff') { diffSel = +b.dataset.k; try { localStorage.setItem('rd_diff', diffSel); } catch (e) {} renderDiffs(); }
     else if (a === 'bgam') doGamble(b.dataset.k || 'gold', +b.dataset.t);
     else if (a === 'selb') { selectStation(b.dataset.k); }
+    else if (a === 'wpick') { document.getElementById('wpick').hidden = true; useWisp(0, pickAt, b.dataset.type); }
+    else if (a === 'wpclose') { document.getElementById('wpick').hidden = true; }
     else if (a === 'mclear') { selB = null; selIds = []; selMon = null; }
     else if (a === 'mview') { if (b.dataset.v === 'lane') myLaneView(); else storyView(); }
     else if (a === 'bsum') doSummon();
@@ -2697,11 +2791,12 @@ window.RENDER = window.RENDER2D;
       case 'KeyH': cmd('hold'); break;
       case 'KeyQ': if (selB === 'upgrade') doUpgrade(0); else if (selB === 'ggold') doGamble('gold', 0); else if (selB === 'gunit') doGamble('unit', 0); else say('강화소(F2)·골드 도박장(F3)·유닛 도박장(F4)을 먼저 눌러 선택하세요.'); break;
       case 'KeyW': if (selB === 'upgrade') doUpgrade(1); else if (selB === 'ggold') doGamble('gold', 1); else if (selB === 'gunit') doGamble('unit', 1); break;
-      case 'KeyE': if (selB === 'ggold') doGamble('gold', 2); else if (selB === 'gunit') doGamble('unit', 2); break;
+      case 'KeyE': if (selB === 'upgrade') doUpgrade(2); else if (selB === 'ggold') doGamble('gold', 2); else if (selB === 'gunit') doGamble('unit', 2); break;
       case 'F4': e.preventDefault(); stationKey('gunit'); break;
       case 'F2': e.preventDefault(); stationKey('upgrade'); break;
       case 'F3': e.preventDefault(); stationKey('ggold'); break;
-      case 'KeyR': if (act({ type: 'draw' })) { selNew(); updateHud(); } break;
+      case 'KeyR': if (selB === 'upgrade') { doUpgrade(3); break; } if (act({ type: 'draw' })) { selNew(); updateHud(); } break;
+      case 'KeyT': if (selB === 'upgrade') doUpgrade(4); break;
       case 'KeyC': if (primary()) document.querySelector('button[data-a="combine"]')?.click(); break;
       case 'Escape': if (tmode) tmode = null; else { selIds = []; selB = null; } updateHud(); break;
       case 'Backspace': e.preventDefault(); myLaneView(); break;
@@ -2731,6 +2826,9 @@ window.RENDER = window.RENDER2D;
     if (r.wood) out.push(`나무 ${r.wood}`);
     if (r.wisps) r.wisps.forEach((n, t) => { if (n) out.push(`${TIERS[t].name} 위습 ${n}`); });
     if (r.draws) out.push(`랜덤전용 뽑기 ${r.draws}`);
+    if (r.units) r.units.forEach(t => out.push(UNITS[t].name));
+    if (r.ship) out.push('랜덤 히든 배 1');
+    if (r.pick) out.push(r.pick.map(t => TIERS[t].name).join(' 또는 ') + ' 위습');
     return out.join(' · ');
   };
   function txt(x, y, s, c, size, T = 0.8, h = 24, stroke = true) { texts.push({ x, y, h, s, c, size, t: T, T, stroke }); }
@@ -2781,6 +2879,9 @@ window.RENDER = window.RENDER2D;
           if (ev.big) { ring(b.x, b.y, '#ffd23f', 90, 0.8, true); showBanner('대박!', '#ffd23f', `${G.name} · ${ev.label}`); }
           say(`${G.name}: ${ev.label}`);
         } break;
+        case 'pship': if (ev.p === ME) { showBanner('해적선 합류!', '#d8a060', '해적선으로 히든 배를 만들 수 있어요 (조합표 ⛵배 탭)'); say('이번 라운드에 해적선이 합류했어요!'); } break;
+        case 'rewardUnit': if (ev.p === ME) { const u = RD.unitById(S, ev.id); if (u) { ring(u.x, u.y, TIERS[UNITS[ev.type].tier].color, 70, 0.8, true); } say(`스토리 보상: ${UNITS[ev.type].name}이(가) 합류했어요!`); } break;
+        case 'rewardPick': if (ev.p === ME) say(`스토리 보상: ${TIERS[ev.tier].name} 위습을 받았어요!`); break;
         case 'wispUsed': if (ev.p === ME) { const u = RD.unitById(S, ev.id); if (u) { fx.push({ k: 'burst', x: u.x, y: u.y, c: TIERS[ev.tier].color, t: 0.6, T: 0.6 }); ring(u.x, u.y, TIERS[ev.tier].color, 60, 0.6, true); say(`${TIERS[ev.tier].name} 위습 → ${UNITS[u.type].name}${onScreen(u.x, u.y) ? '' : ' (내 갑판에 등장 · Backspace로 이동)'}`); } } break;
         case 'drawn': if (ev.p === ME) { const u = RD.unitById(S, ev.id), d = UNITS[ev.type]; if (u) { fx.push({ k: 'burst', x: u.x, y: u.y, c: TIERS[d.tier].color, t: 0.9, T: 0.9 }); shake = 0.3; } showBanner('랜덤전용 획득', TIERS[d.tier].color, `${TIERS[d.tier].name} ${d.name}`); say(`랜덤전용 뽑기 → ${TIERS[d.tier].name} ${d.name}`); } break;
         case 'teleport': ring(ev.x0, ev.y0, '#bff0ff', 26, 0.4, true); ring(ev.x1, ev.y1, '#bff0ff', 30, 0.5, true); spark(ev.x1, ev.y1, '#bff0ff', 6); break;
@@ -2893,15 +2994,15 @@ window.RENDER = window.RENDER2D;
       const gold = k === 'ggold';
       return `<div class="sel"><div class="badge bld" style="background:${gold ? '#f4bf3c' : '#b67cff'}">${gold ? '💰' : '🎲'}</div><div><div class="tier" style="color:${gold ? '#ffe08a' : '#d6b8ff'}">갑판 건물</div><div class="name">${gold ? '골드 도박장' : '유닛 도박장'}</div></div></div>
         ${gold ? sec('gold', CFG.gambleGold, ['Q', 'W', 'E'], '💰 골드 도박', '골드만 걸고, 골드만 받아요. 자주 맞지만 큰돈은 가끔이에요.') : sec('unit', CFG.gambleUnit, ['Q', 'W', 'E'], '🎲 유닛 도박', '골드와 나무를 걸고 선원을 받아요. 받은 선원은 도박장 옆에 내려요. 고급에서는 특수 등급도 나와요.')}
-        <div class="empty">중급은 20웨이브, 고급은 30웨이브부터 열려요. ${gold ? 'F3' : 'F4'}으로 이 건물을 고릅니다.</div>`;
+        <div class="empty">${gold ? '골드 도박은 처음부터 모든 단계를 할 수 있어요.' : '중급은 20웨이브, 고급은 30웨이브부터 열려요.'} ${gold ? 'F3' : 'F4'}으로 이 건물을 고릅니다.</div>`;
     }
     const row = (t, key, label, sub) => {
-      const lv = pl.up[t], max = lv >= CFG.upMax, c = CFG.upCost[t](lv);
+      const lv = pl.up[t], max = lv >= CFG.upMax, c = CFG.upCostFn(lv);
       return `<div class="uprow"><div><b>${label}</b> <small>${sub}</small><div class="lvbar"><i style="width:${lv / CFG.upMax * 100}%"></i></div><small>Lv ${lv}/${CFG.upMax} · 공격력 +${Math.round(lv * CFG.upStep * 100)}%</small></div>
         <button class="bact" data-a="bup" data-t="${t}" ${!max && play && pl.gold >= c ? '' : 'disabled'}>강화 <kbd>${key}</kbd><span class="cost">${max ? '최대' : c + '골드'}</span></button></div>`;
     };
     return `<div class="sel"><div class="badge bld" style="background:#ff8a5a">강</div><div><div class="tier" style="color:#ff8a5a">갑판 건물</div><div class="name">강화소</div></div></div>
-      ${row(0, 'Q', '하급 선원', '흔함·안흔함')}${row(1, 'W', '상급 선원', '희귀함·전설·히든')}
+      ${CFG.upTracks.map((nm, t) => row(t, 'QWERT'[t], nm, '')).join('')}
       <div class="empty">강화는 등급 묶음 전체에 적용되고 최대 ${CFG.upMax}단계입니다. F2로 이 건물을 고릅니다.</div>`;
   }
   const pic = (type) => window.FIG2D ? FIG2D.portrait(type) : '';
@@ -2929,7 +3030,7 @@ window.RENDER = window.RENDER2D;
     const play = S.phase === 'play';
     $('selUpgrade').setAttribute('aria-pressed', selB === 'upgrade'); $('selGold').setAttribute('aria-pressed', selB === 'ggold'); $('selUnitG').setAttribute('aria-pressed', selB === 'gunit');
     const DF0 = CFG.diffs[S.diff || 0]; const MT = titleOf(myClears()); $('diffTag').innerHTML = `난이도 <b style="color:${DF0.color}">${DF0.name}</b> · 칭호 <b style="color:${MT.color}">${MT.name}</b>`;
-    $('upSum').textContent = `하급 Lv ${pl.up[0]} · 상급 Lv ${pl.up[1]}`;
+    $('upSum').textContent = '강화 ' + pl.up.map((lv, t) => `${CFG.upTracks[t].split('·')[0]} ${lv}`).join(' · ');
     const g = Math.round((RD.globalAtk(S, ME) - 1) * 100);
     $('buffs').textContent = [g ? `전체 공격력 +${g}%` : '', pl.rally.t > 0 ? `전체 공속 +${Math.round((pl.rally.mul - 1) * 100)}% (${pl.rally.t.toFixed(0)}초)` : ''].filter(Boolean).join(' · ');
     const has = selIds.length > 0 && play;
@@ -3042,7 +3143,7 @@ window.RENDER = window.RENDER2D;
     const order = RD.BY_TIER[0].filter(t => all.com[t]);
     const list = order.map(t => { const n = all.com[t], lack = miss.com[t] || 0; return `<span class="nd${lack ? '' : ' ok'}"><i style="background:${TIERS[0].color}">${UNITS[t].glyph}</i>${UNITS[t].name} ×${n}${lack ? ` <em>부족 ${lack}</em>` : ' ✓'}</span>`; }).join('');
     const status = miss.n === 0 ? (RD.recipeUnits(S, ME, id, null) ? '<b class="ok">바로 조합 가능</b>' : '<b class="ok">재료 충분 · 중간 단계부터 조합</b>') : `부족 <b>흔함 ${miss.n}개</b>`;
-    const exl = Object.keys(all.ex).map(t => { const lack = miss.ex[t] || 0; return `<span class="nd${lack ? '' : ' ok'}"><i style="background:${TIERS[UNITS[t].tier].color}">${UNITS[t].glyph}</i>${UNITS[t].name} ×${all.ex[t]} (랜덤전용)${lack ? ` <em>부족 ${lack}</em>` : ' ✓'}</span>`; }).join('');
+    const exl = Object.keys(all.ex).map(t => { const lack = miss.ex[t] || 0; return `<span class="nd${lack ? '' : ' ok'}"><i style="background:${TIERS[UNITS[t].tier].color}">${UNITS[t].glyph}</i>${UNITS[t].name} ×${all.ex[t]} (${t === 'pship' ? '라운드 보상' : t === 'blackpearl' ? '스토리 7 보상' : '랜덤전용'})${lack ? ` <em>부족 ${lack}</em>` : ' ✓'}</span>`; }).join('');
     return `<div class="needs"><div class="needs-top"><span>흔함 <b>${all.n}개</b> 필요</span><span>${status}</span></div><div class="nds">${list}${exl}</div></div>`;
   }
   function renderBook() {
@@ -3050,8 +3151,10 @@ window.RENDER = window.RENDER2D;
     const sig = tab + '|' + S.units.filter(u => u.owner === ME).map(u => u.type).sort().join(',') + '|' + S.phase + '|' + [5, 6, 7].map(t => RD.BY_TIER[t].map(aff).join()).join();
     if (sig === bookSig) return; bookSig = sig;
     const ready = (id) => S.phase === 'play' && !!RD.recipeUnits(S, ME, id, null) && aff(id);
-    $('tabs').innerHTML = [1, 2, 3, 4, 5, 6, 7].map(t => {
-      const any = RD.BY_TIER[t].some(ready);
+    const bookIds = (t) => t === 10 ? RD.SHIPS : t === 4 ? RD.BY_TIER[4].concat(RD.SHIPS) : RD.BY_TIER[t];
+    $('tabs').innerHTML = [1, 2, 3, 4, 5, 6, 7, 10].map(t => {
+      const any = bookIds(t).some(ready);
+      if (t === 10) return `<button data-a="tab" data-t="10" aria-pressed="${tab === 10}" style="${tab === 10 ? '' : 'color:#d8a060'}">⛵ 배${any ? ' <span class="dot"></span>' : ''}</button>`;
       return `<button data-a="tab" data-t="${t}" aria-pressed="${t === tab}" style="${t === tab ? '' : `color:${TIERS[t].color}`}">${TIERS[t].name}${any ? ' <span class="dot"></span>' : ''}</button>`;
     }).join('') + `<button data-a="tab" data-t="9" aria-pressed="${tab === 9}">랜덤전용</button>`;
     if (tab === 9) {
@@ -3061,8 +3164,9 @@ window.RENDER = window.RENDER2D;
       }).join('');
       return;
     }
-    const ids = RD.BY_TIER[tab].slice().sort((a, b) => ready(b) - ready(a));
-    book.innerHTML = ids.map(id => {
+    const ids = bookIds(tab).slice().sort((a, b) => ready(b) - ready(a));
+    const shipNote = tab === 10 ? `<div class="rc ship-note"><div class="nm">⛵ 배 조합표</div><div class="sk">${badge('pship', 'mini')} <b>해적선</b>(안흔함)은 라운드가 끝날 때 15% 확률로 합류해요. 해적선 + 다른 선원으로 아래 히든 배를 만들어요. 배는 바다를 항해할 수 있어요.</div><div class="sk">${badge('blackpearl', 'mini')} <b>블랙펄</b>(특수)은 스토리 7 「심해 신전」 보상이에요. <b>모든 초월 조합</b>에 꼭 들어가요.</div></div>` : '';
+    book.innerHTML = shipNote + ids.map(id => {
       const d = UNITS[id], T = TIERS[d.tier], have = RD.recipeHave(S, ME, id), ok = ready(id);
       return `<div class="rc dt-${d.dtype === 'm' ? 'm' : 'p'}${ok ? ' ready' : ''}" data-id="${id}">
         <div class="rc-top">${badge(id, 'mini')}<div><div class="tr" style="color:${T.color}">${T.name}</div><div class="nm">${d.name} ${dtTag(d)}</div></div>
@@ -3162,7 +3266,7 @@ window.RENDER = window.RENDER2D;
       for (const k of ['ggold', 'gunit', 'upgrade']) {
         const b = st[k], o = { x: b.x, y: b.y, kind: 'chest' };
         if (selB === k) ring2(o, '#59d6a4', 2.5); else if (hv === k) ring2(o, 'rgba(255,255,255,0.7)', 1.5, [4, 4]);
-        const p = toScreen(b.x, b.y, 64), label = k === 'ggold' ? '💰 골드 도박장' : k === 'gunit' ? '🎲 유닛 도박장' : '강화소 · Q/W';
+        const p = toScreen(b.x, b.y, 64), label = k === 'ggold' ? '💰 골드 도박장' : k === 'gunit' ? '🎲 유닛 도박장' : '강화소 · F2';
         ctx.font = '800 11px sans-serif'; ctx.textAlign = 'center'; ctx.lineWidth = 3; ctx.strokeStyle = '#0b1620'; ctx.strokeText(label, p.x, p.y);
         ctx.fillStyle = selB === k ? '#59d6a4' : k === 'ggold' ? '#ffe08a' : k === 'gunit' ? '#d6b8ff' : '#ffb08a'; ctx.fillText(label, p.x, p.y); ctx.textAlign = 'start';
       }
@@ -3600,7 +3704,7 @@ window.RENDER = window.RENDER2D;
     const pl = me(), play = S.phase === 'play' && started;
     const us = sel();
     if (selB) {
-      if (selB === 'upgrade') return `<div class="mc-h">강화소</div><div class="mc-g">${[0, 1].map(t => { const lv = pl.up[t], max = lv >= CFG.upMax, c = CFG.upCost[t](lv); return mb('bup', t ? '상급 강화' : '하급 강화', max ? `Lv ${lv} · 최대` : `Lv ${lv} → ${lv + 1} · ${c}G`, { attrs: ` data-t="${t}"`, hot: !max && pl.gold >= c, off: !play || max || pl.gold < c }); }).join('')}${mb('mclear', '닫기', '')}</div>`;
+      if (selB === 'upgrade') return `<div class="mc-h">강화소 <small>등급 묶음별 공격력 +${Math.round(CFG.upStep * 100)}%/단계</small></div><div class="mc-g">${CFG.upTracks.map((nm, t) => { const lv = pl.up[t], max = lv >= CFG.upMax, c = CFG.upCostFn(lv); return mb('bup', nm.split('·')[0] + (nm.includes('·') ? '+' : ''), max ? `Lv ${lv} · 최대` : `Lv ${lv} · ${c}G`, { attrs: ` data-t="${t}"`, hot: !max && pl.gold >= c, off: !play || max || pl.gold < c }); }).join('')}${mb('mclear', '닫기', '')}</div>`;
       const gb = (kind, list) => list.map((G, t) => { const open = S.wave >= G.wave, ok = open && pl.gold >= G.cost && pl.wood >= (G.wood || 0); return mb('bgam', (kind === 'unit' ? '🎲' : '💰') + ['초급', '중급', '고급'][t], open ? `${G.cost}G${G.wood ? ' 🪵' + G.wood : ''}` : G.wave + '웨이브~', { attrs: ` data-k="${kind}" data-t="${t}"`, hot: ok, off: !play || !ok }); }).join('');
       if (selB === 'ggold') return `<div class="mc-h">💰 골드 도박장 <small>골드를 걸고 골드를 받아요</small></div><div class="mc-g">${gb('gold', CFG.gambleGold)}</div>`;
       return `<div class="mc-h">🎲 유닛 도박장 <small>골드+나무를 걸고 선원을 받아요</small></div><div class="mc-g">${gb('unit', CFG.gambleUnit)}</div>`;
