@@ -411,6 +411,14 @@ html.rot body.m .board { width: var(--rw) !important; height: var(--rh) !importa
 html.rot body.m .mcard:not([hidden]) { width: min(calc(var(--rw) * 0.62), 300px); max-height: calc(var(--rh) * 0.58); }
 html.rot body.m .mlog { max-width: calc(var(--rw) * 0.92); }
 html.rot .a2hs { width: var(--rw); height: var(--rh); }
+
+/* 조합법: 오른쪽 위 */
+#mrec[hidden] { display: none; }
+#mrec:not([hidden]) { display: block; position: absolute; z-index: 5; right: 6px; top: calc(52px + env(safe-area-inset-top, 0px)); width: min(58%, 270px); max-height: 46%; overflow-y: auto; padding: 7px; border-radius: 12px; background: rgba(8,20,30,0.88); border: 1px solid #2a5a7a; box-shadow: 0 6px 18px rgba(0,0,0,.45); -webkit-overflow-scrolling: touch; }
+body:not(.m) #mrec:not([hidden]) { top: 8px; }
+#mrec .mrecs { margin-top: 4px; }
+.mr-title { font-size: 12px; font-weight: 800; color: var(--gold); margin: 0 2px; }
+html.rot body.m #mrec:not([hidden]) { width: min(calc(var(--rw) * 0.58), 270px); max-height: calc(var(--rh) * 0.46); }
 </style>
 </head><body>
 <script>
@@ -442,6 +450,7 @@ html.rot .a2hs { width: var(--rw); height: var(--rh); }
       </div>
       <div class="mlog" id="mlog"></div>
       <div class="mcard" id="mcard" hidden></div>
+      <div class="mrecp" id="mrec" hidden></div>
       <div class="wpick" id="wpick" hidden><div class="wp-card"><div class="wp-head"><b>흔함 위습 · 원하는 선원 고르기</b><button data-a="wpclose" aria-label="닫기">✕</button></div><div class="wp-list"></div></div></div>
       <div class="msheet" id="msheet" hidden>
         <div class="ms-head"><b>📖 조합표</b><button id="msAll">전체 메뉴</button><button id="msClose" aria-label="닫기">✕</button></div>
@@ -3435,7 +3444,7 @@ window.RENDER = window.RENDER2D;
     hover = e.pointerType === 'mouse' ? sp : null;
     if (!drag) return;
     if (drag.mm) { if (inMinimap(sp)) { const w = mmToWorld(sp); lookAt(w.x, w.y); } return; }
-    if (drag.touch && !selIds.length && drag.btn === 0) { // 터치: 빈 곳 드래그 = 화면 이동
+    if (drag.touch && drag.btn === 0) { // 터치: 드래그 = 화면 이동 (선원을 고른 상태에서도)
       if (Math.hypot(sp.x - drag.sx0, sp.y - drag.sy0) > 8) drag.moved = drag.panned = true;
       if (drag.panned) panScreen(drag.sx1 - sp.x, drag.sy1 - sp.y);
       drag.sx1 = sp.x; drag.sy1 = sp.y; return;
@@ -4494,7 +4503,7 @@ window.RENDER = window.RENDER2D;
       const u = us[0], d = UNITS[u.type], T = TIERS[d.tier];
       const haveN = S.units.filter(o => o.owner === ME && o.type === u.type).length;
       const can = RD.combinable(S, u.id);
-      const recs = RD.usesOf(u.type).map(id => { const dd = UNITS[id], TT = TIERS[dd.tier]; return { id, dd, ok: !!RD.recipeUnits(S, ME, id, u.id) && pl.wood >= (TT.wood || 0) && pl.gold >= (TT.gold || 0) }; }).sort((a, b) => b.ok - a.ok).slice(0, 3);
+      const recs = RD.usesOf(u.type).map(id => { const dd = UNITS[id], TT = TIERS[dd.tier]; return { id, dd, ok: !!RD.recipeUnits(S, ME, id, u.id) && pl.wood >= (TT.wood || 0) && pl.gold >= (TT.gold || 0) }; }).sort((a, b) => b.ok - a.ok).slice(0, 4);
       const head = `<div class="mc-h"><span style="color:${T.color}">${T.name}</span> ${d.name}${us.length > 1 ? ` <small>외 ${us.length - 1}명</small>` : ''} <span class="dt ${d.dtype === 'm' ? 'm' : 'p'}">${d.dtype === 'm' ? '마뎀' : '물뎀'}</span></div>`;
       const row1 = mb('cmd', '공격', '이동', { attrs: ' data-c="amove"', hot: tmode === 'amove' }) + mb('cmd', '정지', '', { attrs: ' data-c="stop"' }) + mb('cmd', '홀드', '', { attrs: ' data-c="hold"' });
       const row2 = mb('combine', '랜덤 조합', T.need && !d.excl ? `${haveN}/${T.need}` : '불가', { hot: can, off: !can || !play }) + mb('type', '같은 선원', `${haveN}명`, { attrs: ` data-type="${u.type}"` }) + mb('sell', '판매', '+' + T.sell);
@@ -4504,7 +4513,7 @@ window.RENDER = window.RENDER2D;
         const cost = (TT.wood ? `<i class="mi cost${pl.wood >= TT.wood ? ' ok' : ''}">🪵${TT.wood}</i>` : '') + (TT.gold ? `<i class="mi cost${pl.gold >= TT.gold ? ' ok' : ''}">💰${TT.gold}</i>` : '');
         return `<div class="mrec${r.ok ? ' hot' : ''}"><div class="mr-top"><b style="color:${TT.color}">${r.dd.name}</b><small>${TT.name}</small><button data-a="recipe" data-id="${r.id}" ${r.ok && play ? '' : 'disabled'}>조합</button></div><div class="mr-ing">${ings}${cost}</div></div>`;
       }).join('');
-      return head + `<div class="mc-g">${row1}${row2}</div>${row3 ? `<div class="mrecs">${row3}</div>` : '<small class="mc-none">이 선원으로 만드는 조합식은 없어요</small>'}`;
+      return head + `<div class="mc-g">${row1}${row2}</div><!--REC-->` + (row3 ? `<div class="mr-title">조합법 · ${d.name}</div><div class="mrecs">${row3}</div>` : `<div class="mr-title">조합법 · ${d.name}</div><small class="mc-none">이 선원으로 만드는 조합식은 없어요</small>`);
     }
     const mon = selMon != null ? enemyById(selMon) : null;
     const wisps = pl.wisps.map((n, t) => n ? mb('wisp', TIERS[t].name + ' 위습', '×' + n, { attrs: ` data-t="${t}"`, hot: true, off: !play }) : '').filter(Boolean).slice(0, 3).join('');
@@ -4519,7 +4528,12 @@ window.RENDER = window.RENDER2D;
     set('mWave', S.wave); set('mTime', left); set('mGold', pl.gold); set('mWood', pl.wood); set('mMon', `${n}/${CFG.laneLimit}`);
     const mm = document.getElementById('mMonBox'); if (mm) mm.classList.toggle('warn', n / CFG.laneLimit > 0.75);
     const card = document.getElementById('mcard');
-    if (card) { const h = started ? mCardHtml() : ''; if (h !== mcardSig) { card.innerHTML = h; mcardSig = h; } card.hidden = !started || !$('ov').hidden; }
+    if (card) {
+      const h = started ? mCardHtml() : '';
+      if (h !== mcardSig) { const [a, b = ''] = h.split('<!--REC-->'); card.innerHTML = a; const rp = document.getElementById('mrec'); if (rp) { rp.innerHTML = b; rp.dataset.has = b ? '1' : ''; } mcardSig = h; }
+      card.hidden = !started || !$('ov').hidden;
+      const rp = document.getElementById('mrec'); if (rp) rp.hidden = card.hidden || !rp.dataset.has || document.body.classList.contains('m-menu');
+    }
     const hud = document.getElementById('mhud'); if (hud) hud.hidden = !started;
     const lg = document.getElementById('mlog'); if (lg) lg.classList.toggle('show', performance.now() < mlogT);
   }
