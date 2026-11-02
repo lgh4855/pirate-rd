@@ -3,7 +3,7 @@
   "short_name": "해적선 RD",
   "start_url": "./index.html",
   "display": "standalone",
-  "orientation": "any",
+  "orientation": "portrait",
   "background_color": "#0b202c",
   "theme_color": "#0b202c",
   "icons": [
