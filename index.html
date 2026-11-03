@@ -853,7 +853,7 @@ const RD = (() => {
     // 강화: 등급 묶음별로 따로 (흔함·안흔함 / 희귀함 / 전설 / 히든 / 특수: 영원·불멸·초월·특수). 20골드부터 단계마다 비싸짐
     upTracks: ['흔함·안흔함', '희귀함', '전설', '히든', '영원·불멸·초월'],
     upBase: [20, 60, 150, 300, 500], // 강화 시작 비용: 등급이 높을수록 비쌈
-    upCostFn: (lv, tr = 0) => Math.round([20, 60, 150, 300, 500][tr] * (1 + 0.5 * lv + 0.05 * lv * lv)), upStep: 0.12, upAspd: 0.04, upMax: 10,
+    upCostFn: (lv, tr = 0) => Math.round([20, 60, 150, 300, 500][tr] * (1 + 0.5 * lv + 0.05 * lv * lv)), upStep: 0.12, upAspd: 0.04, upMaxT: [10, 10, 20, 20, 20], // 흔함·안흔함, 희귀함은 10강이 풀강 / 전설·히든·영원 이상은 20강
     pirateShipChance: 0.15, // 라운드가 끝날 때 해적선(안흔함)이 대신 합류할 확률
     summonOdds: [0.88, 0.11, 0.01, 0, 0],
     woodShop: [{ tier: 1, cost: 3 }, { tier: 2, cost: 8 }],
@@ -1424,7 +1424,7 @@ const RD = (() => {
       }
       case 'upgrade': {
         const tr = a.track | 0; if (tr < 0 || tr >= CFG.upTracks.length) return false;
-        if (pl.up[tr] >= CFG.upMax) return false;
+        if (pl.up[tr] >= CFG.upMaxT[tr]) return false;
         const c = CFG.upCostFn(pl.up[tr], tr); if (pl.gold < c) return false;
         pl.gold -= c; pl.up[a.track]++; s.events.push({ e: 'station', p, kind: 'upgrade', track: a.track, lv: pl.up[a.track] }); return true;
       }
@@ -3680,7 +3680,7 @@ window.RENDER = window.RENDER2D;
   }
   function doUpgrade(track) {
     if (!S || S.phase !== 'play') return; const pl = me();
-    if (pl.up[track] >= CFG.upMax) { say('이미 최대 강화입니다.'); return; }
+    if (pl.up[track] >= CFG.upMaxT[track]) { say('이미 최대 강화입니다.'); return; }
     if (!act({ type: 'upgrade', track })) say('골드가 부족합니다.');
   }
   function wispAtScreen(sp) {
@@ -4078,13 +4078,13 @@ window.RENDER = window.RENDER2D;
         <div class="empty">${gold ? '골드 도박은 처음부터 모든 단계를 할 수 있어요.' : '중급은 20웨이브, 고급은 30웨이브부터 열려요.'} ${gold ? 'F3' : 'F4'}으로 이 건물을 고릅니다.</div>`;
     }
     const row = (t, key, label, sub) => {
-      const lv = pl.up[t], max = lv >= CFG.upMax, c = CFG.upCostFn(lv, t);
-      return `<div class="uprow"><div><b>${label}</b> <small>${sub}</small><div class="lvbar"><i style="width:${lv / CFG.upMax * 100}%"></i></div><small>Lv ${lv}/${CFG.upMax} · 공격력 +${Math.round(lv * CFG.upStep * 100)}% · 공속 +${Math.round(lv * CFG.upAspd * 100)}%</small></div>
+      const lv = pl.up[t], max = lv >= CFG.upMaxT[t], c = CFG.upCostFn(lv, t);
+      return `<div class="uprow"><div><b>${label}</b> <small>${sub}</small><div class="lvbar"><i style="width:${lv / CFG.upMaxT[t] * 100}%"></i></div><small>Lv ${lv}/${CFG.upMaxT[t]} · 공격력 +${Math.round(lv * CFG.upStep * 100)}% · 공속 +${Math.round(lv * CFG.upAspd * 100)}%</small></div>
         <button class="bact" data-a="bup" data-t="${t}" ${!max && play && pl.gold >= c ? '' : 'disabled'}>강화 <kbd>${key}</kbd><span class="cost">${max ? '최대' : c + '골드'}</span></button></div>`;
     };
     return `<div class="sel"><div class="badge bld" style="background:#ff8a5a">강</div><div><div class="tier" style="color:#ff8a5a">갑판 건물</div><div class="name">강화소</div></div></div>
       ${CFG.upTracks.map((nm, t) => row(t, 'QWERT'[t], nm, '')).join('')}
-      <div class="empty">강화는 등급 묶음 전체에 적용돼요. 단계마다 공격력 +${Math.round(CFG.upStep * 100)}%, 공격속도 +${Math.round(CFG.upAspd * 100)}%, 최대 ${CFG.upMax}단계이고 높은 등급일수록 시작 비용이 비싸요. F2로 이 건물을 고릅니다.</div>`;
+      <div class="empty">강화는 등급 묶음 전체에 적용돼요. 단계마다 공격력 +${Math.round(CFG.upStep * 100)}%, 공격속도 +${Math.round(CFG.upAspd * 100)}%, 흔함·안흔함·희귀함은 최대 10강, 전설 이상은 최대 20강이고 높은 등급일수록 시작 비용이 비싸요. F2로 이 건물을 고릅니다.</div>`;
   }
   const pic = (type) => window.FIG2D ? FIG2D.portrait(type) : '';
   const badge = (type, cls = 'badge') => { const d = UNITS[type], c = TIERS[d.tier].color, p = pic(type); return p ? `<div class="${cls} badge pic" style="border-color:${c};background-image:url(${p})"></div>` : `<div class="${cls} badge" style="background:${c}">${d.glyph}</div>`; };
@@ -4828,7 +4828,7 @@ window.RENDER = window.RENDER2D;
     const pl = me(), play = S.phase === 'play' && started;
     const us = sel();
     if (selB) {
-      if (selB === 'upgrade') return `<div class="mc-h">강화소 <small>단계마다 공격력 +${Math.round(CFG.upStep * 100)}% · 공격속도 +${Math.round(CFG.upAspd * 100)}% (최대 ${CFG.upMax})</small></div><div class="mc-g">${CFG.upTracks.map((nm, t) => { const lv = pl.up[t], max = lv >= CFG.upMax, c = CFG.upCostFn(lv, t); return mb('bup', nm.split('·')[0] + (nm.includes('·') ? '+' : ''), max ? `Lv ${lv} · 최대` : `Lv ${lv} · ${c}G`, { attrs: ` data-t="${t}"`, hot: !max && pl.gold >= c, off: !play || max || pl.gold < c }); }).join('')}${mb('mclear', '닫기', '')}</div>`;
+      if (selB === 'upgrade') return `<div class="mc-h">강화소 <small>단계마다 공격력 +${Math.round(CFG.upStep * 100)}% · 공격속도 +${Math.round(CFG.upAspd * 100)}% (희귀까지 10강 · 전설 이상 20강)</small></div><div class="mc-g">${CFG.upTracks.map((nm, t) => { const lv = pl.up[t], max = lv >= CFG.upMaxT[t], c = CFG.upCostFn(lv, t); return mb('bup', nm.split('·')[0] + (nm.includes('·') ? '+' : ''), max ? `Lv ${lv} · 최대` : `Lv ${lv} · ${c}G`, { attrs: ` data-t="${t}"`, hot: !max && pl.gold >= c, off: !play || max || pl.gold < c }); }).join('')}${mb('mclear', '닫기', '')}</div>`;
       const gb = (kind, list) => list.map((G, t) => { const open = S.wave >= G.wave, ok = open && pl.gold >= G.cost && pl.wood >= (G.wood || 0); return mb('bgam', (kind === 'unit' ? '🎲' : '💰') + ['초급', '중급', '고급'][t], open ? `${G.cost}G${G.wood ? ' 🪵' + G.wood : ''}` : G.wave + '웨이브~', { attrs: ` data-k="${kind}" data-t="${t}"`, hot: ok, off: !play || !ok }); }).join('');
       if (selB === 'wisp') {
         const W = pl.wisps, left = W.map((n, t) => n ? `<span style="color:${TIERS[t].color}">${TIERS[t].name} ${n}</span>` : '').filter(Boolean).join(' · ') || '없음';
