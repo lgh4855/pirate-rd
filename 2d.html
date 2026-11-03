@@ -545,6 +545,13 @@ button, .mb, .mb-it { touch-action: manipulation; }
 #mrec .abil li, #mbPop .abil li { font-size: 9px; }
 .tg[data-r="치명"] { background: #ff6a9a; color: #fff; }
 .tg[data-r="스킬"] { background: #f4bf3c; }
+
+/* 흔함 등 가진 선원으로 하위 조합까지 해서 만들 수 있는 것 */
+.mb-it.chain { border-color: #3ecf8e; box-shadow: 0 0 7px rgba(62,207,142,.6); }
+.mb-it.chain small { color: #7dffc0; font-weight: 800; }
+.mi.mk { border-style: dashed; }
+.mb-plan { margin-top: 3px; font-size: 9.5px; line-height: 1.35; color: #cfe0ea; }
+.mb-next { margin-top: 4px; width: 100%; padding: 4px 6px; font-size: 11px; font-weight: 800; background: #3ecf8e; color: #0b1620; border-color: #3ecf8e; }
 </style>
 </head><body>
 <div class="wrap">
@@ -4054,21 +4061,34 @@ window.RENDER = window.RENDER2D;
   // ---- 맨 아래 조합 막대 (원랜디처럼): 등급 낮은 것부터 왼쪽에, 지금 가진 재료 수 표시 ----
   const BAR_IDS = Object.keys(RECIPES).sort((a, b) => UNITS[a].tier - UNITS[b].tier || (UNITS[a].ship ? 1 : 0) - (UNITS[b].ship ? 1 : 0) || RECIPES[a].length - RECIPES[b].length);
   let barSig = '', barT = 0, barSel = null;
-  function barInfo(id) {
+  // 가진 선원(흔함 포함)으로 하위 조합부터 차례로 만들 수 있는지 계산: 없는 재료는 그 재료의 조합식으로 다시 찾음
+  function invOf() { const m = {}; for (const u of S.units) if (u.owner === ME) m[u.type] = (m[u.type] || 0) + 1; return m; }
+  function planFor(type, inv, steps, depth) {
+    if (inv[type] > 0) { inv[type]--; return true; }
+    const R = RECIPES[type]; if (!R || depth > 4 || UNITS[type].excl) return false;
+    const T = TIERS[UNITS[type].tier]; if (T.wood || T.gold) return false; // 나무·골드가 드는 최상위 재료는 미리 만들어 두어야 함
+    const snap = Object.assign({}, inv), n0 = steps.length;
+    for (const t of R) if (!planFor(t, inv, steps, depth + 1)) { Object.keys(inv).forEach(k => delete inv[k]); Object.assign(inv, snap); steps.length = n0; return false; }
+    steps.push(type); return true;
+  }
+  function barInfo(id, inv0) {
     const pl = me(), have = RD.recipeHave(S, ME, id), n = have.filter(Boolean).length, T = TIERS[UNITS[id].tier];
     const ok = n === have.length && !!RD.recipeUnits(S, ME, id) && pl.wood >= (T.wood || 0) && pl.gold >= (T.gold || 0);
-    return { have, n, N: have.length, ok };
+    // 하위 조합까지 포함한 준비 상태
+    const inv = Object.assign({}, inv0 || invOf()), steps = [], can = RECIPES[id].map(t => planFor(t, inv, steps, 1));
+    const cn = can.filter(Boolean).length, chain = !ok && cn === can.length && pl.wood >= (T.wood || 0) && pl.gold >= (T.gold || 0);
+    return { have, n, N: have.length, ok, can, cn, chain, steps };
   }
   function mBar(hide) {
     const bar = document.getElementById('mbar'); if (!bar) return;
     if (bar.hidden !== hide) { bar.hidden = hide; placeMinimap(); }
     if (hide) { const pp = document.getElementById('mbPop'); if (pp) pp.hidden = true; return; }
     const now = performance.now(); if (now - barT < 300) return; barT = now;
-    let last = -1, html = '';
+    let last = -1, html = ''; const inv = invOf();
     for (const id of BAR_IDS) {
-      const d = UNITS[id], T = TIERS[d.tier], b = barInfo(id);
+      const d = UNITS[id], T = TIERS[d.tier], b = barInfo(id, inv);
       if (d.tier !== last) { last = d.tier; html += `<span class="mb-sep" style="color:${T.color}">${T.name}</span>`; }
-      html += `<button class="mb-it${b.ok ? ' ok' : b.n ? '' : ' none'}${barSel === id ? ' on' : ''}" data-a="bar" data-id="${id}" style="--tc:${T.color}" aria-label="${d.name}"><i style="background-image:url(${pic(id)})"></i><small>${b.n}/${b.N}</small></button>`;
+      html += `<button class="mb-it${b.ok ? ' ok' : b.chain ? ' chain' : b.cn ? '' : ' none'}${barSel === id ? ' on' : ''}" data-a="bar" data-id="${id}" style="--tc:${T.color}" aria-label="${d.name}"><i style="background-image:url(${pic(id)})"></i><small>${b.ok || b.chain ? '준비' : b.cn + '/' + b.N}</small></button>`;
     }
     if (html !== barSig) { const L = document.getElementById('mbList'); const sl = L.scrollLeft; L.innerHTML = html; L.scrollLeft = sl; barSig = html; placeMinimap(); }
     if (barSel) barPop(barSel);
@@ -4076,9 +4096,11 @@ window.RENDER = window.RENDER2D;
   function barPop(id) {
     const pp = document.getElementById('mbPop'); if (!pp) return;
     const d = UNITS[id], T = TIERS[d.tier], pl = me(), b = barInfo(id);
-    const ings = RECIPES[id].map((t, k) => `<i class="mi${b.have[k] ? ' ok' : ''}" style="--tc:${TIERS[UNITS[t].tier].color}">${UNITS[t].name}${b.have[k] ? '✓' : ''}</i>`).join('');
+    const ings = RECIPES[id].map((t, k) => `<i class="mi${b.have[k] ? ' ok' : b.can[k] ? ' ok mk' : ''}" style="--tc:${TIERS[UNITS[t].tier].color}">${UNITS[t].name}${b.have[k] ? '✓' : b.can[k] ? '◐' : ''}</i>`).join('');
+    const plan = !b.ok && b.steps.length ? `<div class="mb-plan">${b.chain ? '가진 선원으로 만들 수 있어요' : '일부 재료는 가진 선원으로 만들 수 있어요'} · 순서: ${b.steps.map(t => `<b style="color:${TIERS[UNITS[t].tier].color}">${UNITS[t].name}</b>`).join(' → ')}${b.chain ? ` → <b style="color:${T.color}">${d.name}</b>` : ''}</div>` : '';
+    const nextBtn = !b.ok && b.steps.length ? `<button data-a="recipe" data-id="${b.steps[0]}" class="mb-next" ${S.phase === 'play' ? '' : 'disabled'}>${UNITS[b.steps[0]].name} 먼저 조합</button>` : '';
     const cost = (T.wood ? `<i class="mi cost${pl.wood >= T.wood ? ' ok' : ''}">🪵${T.wood}</i>` : '') + (T.gold ? `<i class="mi cost${pl.gold >= T.gold ? ' ok' : ''}">💰${T.gold}</i>` : '');
-    const h = `<div class="mr-top"><b style="color:${T.color}">${d.name}</b><small>${T.name}</small><button data-a="recipe" data-id="${id}" ${b.ok && S.phase === 'play' ? '' : 'disabled'}>조합</button><button data-a="barx" aria-label="닫기">✕</button></div><div class="mr-ab">${tags(d)} <span class="mr-sk">${skillLine(d)}</span></div><div class="mr-ing">${ings}${cost}</div>`;
+    const h = `<div class="mr-top"><b style="color:${T.color}">${d.name}</b><small>${T.name}</small><button data-a="recipe" data-id="${id}" ${b.ok && S.phase === 'play' ? '' : 'disabled'}>조합</button><button data-a="barx" aria-label="닫기">✕</button></div><div class="mr-ab">${tags(d)} <span class="mr-sk">${skillLine(d)}</span></div><div class="mr-ing">${ings}${cost}</div>${plan}${nextBtn}`;
     if (pp.dataset.sig !== h) { pp.innerHTML = h; pp.dataset.sig = h; }
     pp.hidden = false;
   }
