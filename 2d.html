@@ -563,6 +563,11 @@ button, .mb, .mb-it { touch-action: manipulation; }
   .mb-list::-webkit-scrollbar { display: block; height: 5px; }
   .mb-list::-webkit-scrollbar-thumb { background: #3a6a8a; border-radius: 3px; }
 }
+
+/* 조합식 칸: 재료 선원 얼굴 + 맵 표시 번호 */
+.mi.mip { display: inline-flex; align-items: center; gap: 3px; padding: 1px 6px 1px 1px; }
+.mi-p { display: inline-block; width: 20px; height: 20px; border-radius: 50%; background-size: cover; background-position: center 20%; border: 1.5px solid var(--tc, #888); background-color: #13324a; }
+.mi-n { display: inline-grid; place-items: center; width: 13px; height: 13px; border-radius: 50%; background: #3ecf8e; color: #0b1620; font-size: 9px; font-weight: 800; }
 </style>
 </head><body>
 <div class="wrap">
@@ -3599,6 +3604,20 @@ window.RENDER = window.RENDER2D;
     const tset = new Set(); for (const u of sel()) if (u.order === 'attack' && u.tgt != null) tset.add(u.tgt);
     for (const id of tset) { const o = enemyById(id); if (o) { ring2(o, '#ff4f4f', 2.5); const p = toScreen(o.x, o.y, o.kind === 'story' ? 160 : o.boss ? 60 : 34); ctx.fillStyle = '#ff4f4f'; ctx.beginPath(); ctx.moveTo(p.x, p.y + 6); ctx.lineTo(p.x - 6, p.y - 4); ctx.lineTo(p.x + 6, p.y - 4); ctx.closePath(); ctx.fill(); } }
     if (selMon != null) { const o = enemyById(selMon); if (o) ring2(o, '#f4bf3c', 2, [5, 4]); }
+    if (barSel && RECIPES[barSel]) { // 맨 아래 조합 막대에서 고른 선원: 필요한 재료 선원을 맵에서 초록 원으로 표시
+      const used = new Set(), mine = S.units.filter(u => u.owner === ME);
+      RECIPES[barSel].forEach((t, k) => {
+        const u = mine.find(o => o.type === t && !used.has(o.id)); if (!u) return; used.add(u.id);
+        ring2(u, '#3ecf8e', 3);
+        const q = toScreen(u.x, u.y, 40); ctx.fillStyle = '#3ecf8e'; ctx.beginPath(); ctx.arc(q.x, q.y, 8, 0, 7); ctx.fill();
+        ctx.fillStyle = '#0b1620'; ctx.font = '800 11px sans-serif'; ctx.textAlign = 'center'; ctx.fillText(String(k + 1), q.x, q.y + 4); ctx.textAlign = 'start';
+      });
+      // 없는 재료를 만들 때 쓰일 선원(흔함 등)은 점선 원으로
+      const inv0 = invOf(); used.forEach(id => { const u = RD.unitById(S, id); if (u) inv0[u.type]--; });
+      const inv = Object.assign({}, inv0), steps = [];
+      RECIPES[barSel].forEach((t, k) => { if (!mine.some(o => o.type === t && used.has(o.id))) planFor(t, inv, steps, 1); });
+      for (const t in inv0) { let n = inv0[t] - (inv[t] || 0); for (const u of mine) { if (n <= 0) break; if (u.type === t && !used.has(u.id)) { used.add(u.id); ring2(u, '#3ecf8e', 2, [4, 3]); n--; } } }
+    }
     { // 갑판 건물: 선택·마우스 올림 표시와 이름표
       const st = RD.STATIONS[ME], hv = hover && !inMinimap(hover) ? stationAtScreen(hover) : null;
       for (const k of ['ggold', 'gunit', 'wisp', 'upgrade']) {
@@ -4129,7 +4148,7 @@ window.RENDER = window.RENDER2D;
   function barPop(id) {
     const pp = document.getElementById('mbPop'); if (!pp) return;
     const d = UNITS[id], T = TIERS[d.tier], pl = me(), b = barInfo(id);
-    const ings = RECIPES[id].map((t, k) => `<i class="mi${b.have[k] ? ' ok' : b.can[k] ? ' ok mk' : ''}" style="--tc:${TIERS[UNITS[t].tier].color}">${UNITS[t].name}${b.have[k] ? '✓' : b.can[k] ? '◐' : ''}</i>`).join('');
+    const ings = RECIPES[id].map((t, k) => `<i class="mi mip${b.have[k] ? ' ok' : b.can[k] ? ' ok mk' : ''}" style="--tc:${TIERS[UNITS[t].tier].color}"><span class="mi-p" style="background-image:url(${pic(t)})"></span>${b.have[k] ? `<span class="mi-n">${k + 1}</span>` : ''}${UNITS[t].name}${b.have[k] ? '✓' : b.can[k] ? '◐' : ''}</i>`).join('');
     const plan = !b.ok && b.steps.length ? `<div class="mb-plan">${b.chain ? '가진 선원으로 만들 수 있어요' : '일부 재료는 가진 선원으로 만들 수 있어요'} · 순서: ${b.steps.map(t => `<b style="color:${TIERS[UNITS[t].tier].color}">${UNITS[t].name}</b>`).join(' → ')}${b.chain ? ` → <b style="color:${T.color}">${d.name}</b>` : ''}</div>` : '';
     const nextBtn = !b.ok && b.steps.length ? `<button data-a="recipe" data-id="${b.steps[0]}" class="mb-next" ${S.phase === 'play' ? '' : 'disabled'}>${UNITS[b.steps[0]].name} 먼저 조합</button>` : '';
     const cost = (T.wood ? `<i class="mi cost${pl.wood >= T.wood ? ' ok' : ''}">🪵${T.wood}</i>` : '') + (T.gold ? `<i class="mi cost${pl.gold >= T.gold ? ' ok' : ''}">💰${T.gold}</i>` : '');
