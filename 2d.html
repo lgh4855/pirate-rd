@@ -552,6 +552,17 @@ button, .mb, .mb-it { touch-action: manipulation; }
 .mi.mk { border-style: dashed; }
 .mb-plan { margin-top: 3px; font-size: 9.5px; line-height: 1.35; color: #cfe0ea; }
 .mb-next { margin-top: 4px; width: 100%; padding: 4px 6px; font-size: 11px; font-weight: 800; background: #3ecf8e; color: #0b1620; border-color: #3ecf8e; }
+
+/* 조합 막대 좌우 화살표 (PC) */
+#mbar:not([hidden]) { display: flex; align-items: center; gap: 3px; }
+#mbar .mb-list { flex: 1; min-width: 0; }
+.mb-arr { flex: none; width: 22px; height: 40px; padding: 0; font-size: 11px; border-radius: 6px; display: none; }
+@media (pointer: fine) {
+  .mb-arr { display: block; }
+  .mb-list { scrollbar-width: thin; padding-bottom: 2px; }
+  .mb-list::-webkit-scrollbar { display: block; height: 5px; }
+  .mb-list::-webkit-scrollbar-thumb { background: #3a6a8a; border-radius: 3px; }
+}
 </style>
 </head><body>
 <div class="wrap">
@@ -578,7 +589,7 @@ button, .mb, .mb-it { touch-action: manipulation; }
       <div class="mrecp" id="mrec" hidden></div>
       <div class="mstat" id="mstat" hidden></div>
       <div class="mbpop" id="mbPop" hidden></div>
-      <div class="mbar" id="mbar" hidden><div class="mb-list" id="mbList"></div></div>
+      <div class="mbar" id="mbar" hidden><button class="mb-arr l" data-a="barscroll" data-d="-1" aria-label="왼쪽으로">◀</button><div class="mb-list" id="mbList"></div><button class="mb-arr r" data-a="barscroll" data-d="1" aria-label="오른쪽으로">▶</button></div>
       <div class="wpick" id="wpick" hidden><div class="wp-card"><div class="wp-head"><b>흔함 위습 · 원하는 선원 고르기</b><button data-a="wpclose" aria-label="닫기">✕</button></div><div class="wp-list"></div></div></div>
       <div class="msheet" id="msheet" hidden>
         <div class="ms-head"><b>📖 조합표</b><button id="msAll">전체 메뉴</button><button id="msClose" aria-label="닫기">✕</button></div>
@@ -853,7 +864,7 @@ const RD = (() => {
     upTracks: ['흔함·안흔함', '희귀함', '전설', '히든', '영원·불멸·초월'],
     upBase: [20, 60, 150, 300, 500], // 강화 시작 비용: 등급이 높을수록 비쌈
     upCostFn: (lv, tr = 0) => Math.round([20, 60, 150, 300, 500][tr] * (1 + 0.5 * lv + 0.05 * lv * lv)), upStep: 0.12, upAspd: 0.04, upMaxT: [10, 10, 20, 20, 20], // 흔함·안흔함, 희귀함은 10강이 풀강 / 전설·히든·영원 이상은 20강
-    pirateShipChance: 0.15, // 라운드가 끝날 때 해적선(안흔함)이 대신 합류할 확률
+    pirateShipChance: 0.05, startUncommon: 0.15, // 라운드가 끝날 때 해적선(안흔함)이 대신 합류할 확률
     summonOdds: [0.88, 0.11, 0.01, 0, 0],
     woodShop: [{ tier: 1, cost: 3 }, { tier: 2, cost: 8 }],
     armorK: 50, auraR: 110, bigR: 520,
@@ -1239,11 +1250,13 @@ const RD = (() => {
     const pt = deckPoint(s, p); return addUnit(s, p, type, pt.x, pt.y);
   }
   function grant(s, p, n, round) {
-    // 라운드 보상: 흔함, 또는 15% 확률로 해적선 / 시작 선원: 흔함, 또는 15% 확률로 안흔함(해적선 포함)
+    // 라운드 보상: 흔함 95%, 해적선 5% / 시작 선원: 흔함 80%, 안흔함 15%, 해적선 5%
     let ship = false;
     for (let k = 0; k < n; k++) {
       let type;
-      if (rand(s) < CFG.pirateShipChance) { const pool = round ? ['pship'] : BY_TIER[1].concat(['pship']); type = pool[Math.floor(rand(s) * pool.length)]; }
+      const r = rand(s);
+      if (r < CFG.pirateShipChance) type = 'pship'; // 해적선: 시작·라운드 모두 5%
+      else if (!round && r < CFG.pirateShipChance + CFG.startUncommon) type = pickUnit(s, 1); // 시작 선원: 15% 안흔함
       else type = pickUnit(s, 0);
       if (type === 'pship') ship = true;
       newUnit(s, p, type);
@@ -3030,6 +3043,7 @@ window.RENDER = window.RENDER2D;
     else if (a === 'bar') { const id = b.dataset.id; barSel = barSel === id ? null : id; barT = 0; barSig = ''; if (!barSel) document.getElementById('mbPop').hidden = true; else barPop(id); }
     else if (a === 'barx') { barSel = null; barSig = ''; barT = 0; document.getElementById('mbPop').hidden = true; }
     else if (a === 'altar') { const st = RD.STATIONS[ME].wisp, g = GEO[ME]; const at = { x: st.x, y: st.y + (g.cy > st.y ? 46 : -46) }; useWisp(+b.dataset.t, at, b.dataset.type || null); selectStation('wisp'); updateHud(); }
+    else if (a === 'barscroll') { const L = document.getElementById('mbList'); L.scrollBy({ left: +b.dataset.d * L.clientWidth * 0.8, behavior: 'smooth' }); }
     else if (a === 'recfold') { const rp = document.getElementById('mrec'); rp.classList.toggle('fold'); try { localStorage.setItem('rd_recfold', rp.classList.contains('fold') ? '1' : ''); } catch (e) {} }
     else if (a === 'wpclose') { document.getElementById('wpick').hidden = true; }
     else if (a === 'mclear') { selB = null; selIds = []; selMon = null; }
@@ -3489,7 +3503,7 @@ window.RENDER = window.RENDER2D;
       return;
     }
     const ids = bookIds(tab).slice().sort((a, b) => ready(b) - ready(a));
-    const shipNote = tab === 10 ? `<div class="rc ship-note"><div class="nm">⛵ 배 조합표</div><div class="sk">${badge('pship', 'mini')} <b>해적선</b>(안흔함)은 라운드가 끝날 때 15% 확률로 합류해요. 해적선 + 다른 선원으로 아래 히든 배를 만들어요. 배는 바다를 항해할 수 있어요.</div><div class="sk">${badge('blackpearl', 'mini')} <b>블랙펄</b>(특수)은 스토리 7 「심해 신전」 보상이에요. <b>모든 초월 조합</b>에 꼭 들어가요.</div></div>` : '';
+    const shipNote = tab === 10 ? `<div class="rc ship-note"><div class="nm">⛵ 배 조합표</div><div class="sk">${badge('pship', 'mini')} <b>해적선</b>(안흔함)은 게임 시작과 라운드가 끝날 때 선원마다 5% 확률로 합류해요. 해적선 + 다른 선원으로 아래 히든 배를 만들어요. 배는 바다를 항해할 수 있어요.</div><div class="sk">${badge('blackpearl', 'mini')} <b>블랙펄</b>(특수)은 스토리 7 「심해 신전」 보상이에요. <b>모든 초월 조합</b>에 꼭 들어가요.</div></div>` : '';
     book.innerHTML = shipNote + ids.map(id => {
       const d = UNITS[id], T = TIERS[d.tier], have = RD.recipeHave(S, ME, id), ok = ready(id);
       return `<div class="rc dt-${d.dtype === 'm' ? 'm' : 'p'}${ok ? ' ready' : ''}" data-id="${id}">
@@ -3498,7 +3512,7 @@ window.RENDER = window.RENDER2D;
         ${roles(d)}
         <div class="ings">${RECIPES[id].map((t, k) => `<span class="ing${have[k] ? ' ok' : ''}" style="--tc:${TIERS[UNITS[t].tier].color}" title="${TIERS[UNITS[t].tier].name} · ${UNITS[t].dtype === 'm' ? '마뎀' : '물뎀'}${have[k] ? ' · 보유' : ' · 없음'}">${chipIcon(t)}<b>${UNITS[t].name}</b>${have[k] ? '<em>✓</em>' : ''}</span>`).join('')}${costHtml(id)}</div>
         ${needsHtml(id)}
-        <div class="sk"><b style="color:var(--ink)">${(d.skill ? d.skill.name : '고유 스킬 없음')}</b> · ${(d.skill ? d.skill.desc : '')}</div>
+        <div class="sk">${abilHtml(d)}</div>
       </div>`;
     }).join('');
   }
@@ -4068,6 +4082,17 @@ window.RENDER = window.RENDER2D;
   // ---- 맨 아래 조합 막대 (원랜디처럼): 등급 낮은 것부터 왼쪽에, 지금 가진 재료 수 표시 ----
   const BAR_IDS = Object.keys(RECIPES).sort((a, b) => UNITS[a].tier - UNITS[b].tier || (UNITS[a].ship ? 1 : 0) - (UNITS[b].ship ? 1 : 0) || RECIPES[a].length - RECIPES[b].length);
   let barSig = '', barT = 0, barSel = null;
+  { // PC: 마우스 휠·끌기로 조합 막대 좌우 스크롤 (불멸·초월까지 보기)
+    const L = document.getElementById('mbList');
+    if (L) {
+      L.addEventListener('wheel', (e) => { if (Math.abs(e.deltaY) > Math.abs(e.deltaX)) { L.scrollLeft += e.deltaY; e.preventDefault(); } }, { passive: false });
+      let dr = null;
+      L.addEventListener('pointerdown', (e) => { if (e.pointerType === 'mouse') dr = { x: e.clientX, l: L.scrollLeft, moved: false }; });
+      window.addEventListener('pointermove', (e) => { if (!dr) return; const dx = e.clientX - dr.x; if (Math.abs(dx) > 5) dr.moved = true; L.scrollLeft = dr.l - dx; });
+      window.addEventListener('pointerup', () => { if (dr && dr.moved) { L.dataset.drag = '1'; setTimeout(() => { L.dataset.drag = ''; }, 50); } dr = null; });
+      L.addEventListener('click', (e) => { if (L.dataset.drag) { e.stopPropagation(); e.preventDefault(); } }, true);
+    }
+  }
   // 가진 선원(흔함 포함)으로 하위 조합부터 차례로 만들 수 있는지 계산: 없는 재료는 그 재료의 조합식으로 다시 찾음
   function invOf() { const m = {}; for (const u of S.units) if (u.owner === ME) m[u.type] = (m[u.type] || 0) + 1; return m; }
   function planFor(type, inv, steps, depth) {
