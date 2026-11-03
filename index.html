@@ -870,8 +870,8 @@ const RD = (() => {
     fastBoss: { t: 20, gold: 100 },
     // 강화: 등급 묶음별로 따로 (흔함·안흔함 / 희귀함 / 전설 / 히든 / 특수: 영원·불멸·초월·특수). 20골드부터 단계마다 비싸짐
     upTracks: ['흔함·안흔함', '희귀함', '전설', '히든', '영원·불멸·초월'],
-    upBase: [20, 60, 150, 300, 500], // 강화 시작 비용: 등급이 높을수록 비쌈
-    upCostFn: (lv, tr = 0) => Math.round([20, 60, 150, 300, 500][tr] * (1 + 0.5 * lv + 0.05 * lv * lv)), upStep: 0.12, upAspd: 0.04, upMaxT: [10, 10, 20, 20, 20], // 흔함·안흔함, 희귀함은 10강이 풀강 / 전설·히든·영원 이상은 20강
+    upBase: [20, 50, 150, 130, 350], // 강화 시작 비용: 등급이 높을수록 비쌈
+    upCostFn: (lv, tr = 0) => Math.round([20, 50, 150, 130, 350][tr] * (1 + 0.4 * lv)), upStep: 0.12, upAspd: 0.04, upMaxT: [10, 10, 20, 20, 20], // 흔함·안흔함, 희귀함은 10강이 풀강 / 전설·히든·영원 이상은 20강
     pirateShipChance: 0.05, startUncommon: 0.15, // 라운드가 끝날 때 해적선(안흔함)이 대신 합류할 확률
     summonOdds: [0.88, 0.11, 0.01, 0, 0],
     woodShop: [{ tier: 1, cost: 3 }, { tier: 2, cost: 8 }],
@@ -907,7 +907,7 @@ const RD = (() => {
     { name: '안흔함', color: '#4aa8ff', sell: 60, need: 3 },
     { name: '희귀함', color: '#b67cff', sell: 150, need: 3 },
     { name: '전설', color: '#ffa63d', sell: 400, need: 0 }, // 단계 조합은 전설까지. 그 위는 특수 등급(조합식으로만)
-    { name: '히든', color: '#ff4f7b', sell: 1000, need: 0 },
+    { name: '히든', color: '#ff4f7b', sell: 350, need: 0 }, // 히든은 전설보다 살짝 아래 급
     { name: '영원', color: '#2fe0c0', sell: 1500, need: 0, wood: 4, gold: 800 },
     { name: '불멸', color: '#c6ff3a', sell: 1500, need: 0, wood: 4, gold: 800 },
     { name: '초월', color: '#fff3a8', sell: 1500, need: 0, wood: 4, gold: 800 }, // 영원·불멸·초월은 같은 급
@@ -965,114 +965,114 @@ const RD = (() => {
     drummer: { name: '북잡이', tier: 1, glyph: '북', look: 'support', accent: '#e7b84a', roles: ['버프'], dmg: 10, cd: 1.0, range: 160, kind: 'single', aura: { adjAspd: 0.25 },
                skill: { name: '진군 북소리', type: 'rally', chance: 0.1, mul: 1.2, dur: 3, desc: '주변 선원 공속 +25%, 10% 확률로 전체 공속 +20%' } },
 
-    gale:    { name: '바람 검호', tier: 2, glyph: '풍', look: 'blade', accent: '#9effd2', roles: ['단일', '다중'], dmg: 70, cd: 0.35, range: 180, kind: 'multi', n: 2,
+    gale:    { name: '바람 검호', tier: 2, glyph: '풍', look: 'blade', accent: '#9effd2', roles: ['단일', '다중'], dmg: 55, cd: 0.35, range: 180, kind: 'multi', n: 2,
                skill: { name: '회오리 베기', type: 'nova', chance: 0.1, r: 110, mul: 2, desc: '10% 확률로 회오리 범위 공격' } },
-    shadow:  { name: '그림자 닌자', tier: 2, glyph: '영', look: 'ninja', accent: '#6a5acd', roles: ['단일', '보스킬러'], dmg: 100, cd: 0.4, range: 190, kind: 'single', crit: [0.25, 3], bossMul: 1.6,
+    shadow:  { name: '그림자 닌자', tier: 2, glyph: '영', look: 'ninja', accent: '#6a5acd', roles: ['단일', '보스킬러'], dmg: 80, cd: 0.4, range: 190, kind: 'single', crit: [0.25, 3], bossMul: 1.6,
                skill: { name: '암살', type: 'execute', chance: 0.1, mul: 8, desc: '10% 확률로 8배 암살' } },
-    storm:   { name: '폭풍 술사', tier: 2, glyph: '뇌', look: 'mage', accent: '#ffe066', roles: ['광역'], dmg: 165, cd: 1.1, range: 220, kind: 'chain', n: 4,
+    storm:   { name: '폭풍 술사', tier: 2, glyph: '뇌', look: 'mage', accent: '#ffe066', roles: ['광역'], dmg: 135, cd: 1.1, range: 220, kind: 'chain', n: 4,
                skill: { name: '뇌우', type: 'storm', chance: 0.12, n: 8, mul: 1.5, desc: '12% 확률로 낙뢰 8발' } },
-    iron:    { name: '철갑 포병', tier: 2, glyph: '철', look: 'cannon', accent: '#5c6670', roles: ['광역'], dmg: 280, cd: 1.5, range: 210, kind: 'splash', r: 76,
+    iron:    { name: '철갑 포병', tier: 2, glyph: '철', look: 'cannon', accent: '#5c6670', roles: ['광역'], dmg: 225, cd: 1.5, range: 210, kind: 'splash', r: 76,
                skill: { name: '일제 포격', type: 'meteor', chance: 0.12, n: 5, r: 70, mul: 1.5, desc: '12% 확률로 포탄 5발 낙하' } },
-    curse:   { name: '저주 무녀', tier: 2, glyph: '주', look: 'mage', accent: '#c05cff', roles: ['광역', '방깎'], dmg: 170, cd: 1.0, range: 220, kind: 'splash', r: 60, shred: [10, 40, 3],
+    curse:   { name: '저주 무녀', tier: 2, glyph: '주', look: 'mage', accent: '#c05cff', roles: ['광역', '방깎'], dmg: 135, cd: 1.0, range: 220, kind: 'splash', r: 60, shred: [10, 40, 3],
                skill: { name: '저주진', type: 'shred', chance: 0.12, r: 140, amt: 40, dur: 5, mul: 1, slow: [0.35, 2], desc: '12% 확률로 넓은 범위 방어력 -40' } },
-    marshal: { name: '전장 지휘관', tier: 2, glyph: '휘', look: 'captain', accent: '#d94b4b', roles: ['버프'], dmg: 140, cd: 1.0, range: 200, kind: 'single', aura: { globalAtk: 0.1 },
+    marshal: { name: '전장 지휘관', tier: 2, glyph: '휘', look: 'captain', accent: '#d94b4b', roles: ['버프'], dmg: 115, cd: 1.0, range: 200, kind: 'single', aura: { globalAtk: 0.1 },
                skill: { name: '돌격 명령', type: 'rally', chance: 0.08, mul: 1.3, dur: 4, desc: '전체 공격력 +10%, 8% 확률로 전체 공속 +30%' } },
 
-    thunder: { name: '천둥 선장', tier: 3, glyph: '천', look: 'captain', accent: '#ffe066', roles: ['광역', '기절'], dmg: 805, cd: 1.0, range: 240, kind: 'chain', n: 6, stun: [0.2, 0.5],
+    thunder: { name: '천둥 선장', tier: 3, glyph: '천', look: 'captain', accent: '#ffe066', roles: ['광역', '기절'], dmg: 560, cd: 1.0, range: 240, kind: 'chain', n: 6, stun: [0.2, 0.5],
                skill: { name: '천둥 강림', type: 'storm', chance: 0.12, n: 14, mul: 2, stun: 0.6, desc: '12% 확률로 낙뢰 14발 + 기절' } },
-    witch:   { name: '바다 마녀', tier: 3, glyph: '마', look: 'mage', accent: '#2fd4c4', roles: ['광역', '감속', '방깎'], dmg: 840, cd: 0.8, range: 260, kind: 'splash', r: 92, slow: [0.45, 2], shred: [12, 40, 3],
+    witch:   { name: '바다 마녀', tier: 3, glyph: '마', look: 'mage', accent: '#2fd4c4', roles: ['광역', '감속', '방깎'], dmg: 580, cd: 0.8, range: 260, kind: 'splash', r: 92, slow: [0.45, 2], shred: [12, 40, 3],
                skill: { name: '심연의 소용돌이', type: 'freeze', chance: 0.1, r: 160, dur: 1.2, mul: 2, desc: '10% 확률로 거대 소용돌이, 1.2초 기절' } },
-    flame:   { name: '화염 제독', tier: 3, glyph: '화', look: 'gun', accent: '#ff6a2a', roles: ['단일', '다중'], dmg: 335, cd: 0.3, range: 220, kind: 'multi', n: 3,
+    flame:   { name: '화염 제독', tier: 3, glyph: '화', look: 'gun', accent: '#ff6a2a', roles: ['단일', '다중'], dmg: 235, cd: 0.3, range: 220, kind: 'multi', n: 3,
                skill: { name: '화염 포화', type: 'sweep', chance: 0.08, mul: 3, desc: '8% 확률로 항로 한 변을 불바다로 (건물에는 큰 폭발)' } },
-    saint:   { name: '검성', tier: 3, glyph: '성', look: 'blade', accent: '#fff2b0', roles: ['단일', '보스킬러'], dmg: 585, cd: 0.35, range: 220, kind: 'single', crit: [0.3, 3], bossMul: 2,
+    saint:   { name: '검성', tier: 3, glyph: '성', look: 'blade', accent: '#fff2b0', roles: ['단일', '보스킬러'], dmg: 405, cd: 0.35, range: 220, kind: 'single', crit: [0.3, 3], bossMul: 2,
                skill: { name: '일섬', type: 'execute', chance: 0.12, mul: 10, desc: '12% 확률로 10배 일섬' } },
 
-    abyss:   { name: '심해의 왕', tier: 4, glyph: '왕', look: 'king', accent: '#2f7bff', roles: ['광역', '감속'], dmg: 2065, cd: 1.2, range: 320, kind: 'splash', r: 120,
+    abyss:   { name: '심해의 왕', tier: 4, glyph: '왕', look: 'king', accent: '#2f7bff', roles: ['광역', '감속'], dmg: 1015, cd: 1.2, range: 320, kind: 'splash', r: 120,
                skill: { name: '대해일', type: 'tsunami', chance: 0.1, mul: 2, slow: [0.5, 3], desc: '10% 확률로 주변 넓은 범위에 해일' } },
-    chrono:  { name: '시간의 항해사', tier: 4, glyph: '시', look: 'mage', accent: '#e6d3ff', roles: ['다중', '기절'], dmg: 645, cd: 0.45, range: 300, kind: 'multi', n: 4, stun: [0.15, 0.7],
+    chrono:  { name: '시간의 항해사', tier: 4, glyph: '시', look: 'mage', accent: '#e6d3ff', roles: ['다중', '기절'], dmg: 315, cd: 0.45, range: 300, kind: 'multi', n: 4, stun: [0.15, 0.7],
                skill: { name: '시간 정지', type: 'timestop', chance: 0.06, dur: 2.5, desc: '6% 확률로 주변 넓은 범위 2.5초 정지' } },
-    king:    { name: '해적왕', tier: 4, glyph: '해', look: 'king', accent: '#ffd23f', roles: ['보스킬러', '버프'], dmg: 840, cd: 0.5, range: 320, kind: 'single', crit: [0.3, 3], bossMul: 2.5, aura: { globalAtk: 0.2 },
+    king:    { name: '해적왕', tier: 4, glyph: '해', look: 'king', accent: '#ffd23f', roles: ['보스킬러', '버프'], dmg: 415, cd: 0.5, range: 320, kind: 'single', crit: [0.3, 3], bossMul: 2.5, aura: { globalAtk: 0.2 },
                skill: { name: '패왕의 일격', type: 'execute', chance: 0.12, mul: 12, nova: 120, desc: '전체 공격력 +20%, 12% 확률로 12배 일격' } },
 
     // ---- 희귀함 추가 ----
-    venom:   { name: '독침 사냥꾼', tier: 2, glyph: '독', look: 'ninja', accent: '#a6e05a', roles: ['단일', '방깎'], dmg: 145, cd: 0.6, range: 230, kind: 'single', shred: [8, 30, 3],
+    venom:   { name: '독침 사냥꾼', tier: 2, glyph: '독', look: 'ninja', accent: '#a6e05a', roles: ['단일', '방깎'], dmg: 115, cd: 0.6, range: 230, kind: 'single', shred: [8, 30, 3],
                skill: { name: '맹독침', type: 'percent', chance: 0.1, cur: 0.04, mul: 2, desc: '10% 확률로 대상 현재 체력 4% 피해' } },
-    dancer:  { name: '파도 무희', tier: 2, glyph: '파', look: 'mage', accent: '#5fd0ff', roles: ['광역', '감속'], dmg: 160, cd: 0.9, range: 210, kind: 'splash', r: 70, slow: [0.4, 2],
+    dancer:  { name: '파도 무희', tier: 2, glyph: '파', look: 'mage', accent: '#5fd0ff', roles: ['광역', '감속'], dmg: 130, cd: 0.9, range: 210, kind: 'splash', r: 70, slow: [0.4, 2],
                skill: { name: '물보라 춤', type: 'freeze', chance: 0.1, r: 120, dur: 1, mul: 1.5, desc: '10% 확률로 넓은 범위 1초 기절' } },
-    rune:    { name: '룬 각인사', tier: 2, glyph: '룬', look: 'mage', accent: '#7a8cff', roles: ['단일', '마방깎'], dmg: 190, cd: 0.8, range: 230, kind: 'single', mshred: [8, 35, 3],
+    rune:    { name: '룬 각인사', tier: 2, glyph: '룬', look: 'mage', accent: '#7a8cff', roles: ['단일', '마방깎'], dmg: 150, cd: 0.8, range: 230, kind: 'single', mshred: [8, 35, 3],
                skill: { name: '봉인 룬', type: 'shred', mkind: 'm', chance: 0.12, r: 120, amt: 35, dur: 5, mul: 1, desc: '12% 확률로 범위 마법 저항 -35' } },
-    brawler: { name: '주먹 갑판장', tier: 2, glyph: '권', look: 'blade', accent: '#ff9a4a', roles: ['단일', '기절'], dmg: 175, cd: 0.7, range: 150, kind: 'single', stun: [0.15, 0.6],
+    brawler: { name: '주먹 갑판장', tier: 2, glyph: '권', look: 'blade', accent: '#ff9a4a', roles: ['단일', '기절'], dmg: 140, cd: 0.7, range: 150, kind: 'single', stun: [0.15, 0.6],
                skill: { name: '닻 내려찍기', type: 'freeze', chance: 0.1, r: 70, dur: 1.2, mul: 3, desc: '10% 확률로 주변 3배 피해 + 1.2초 기절' } },
     // ---- 전설 추가 ----
-    reaper:  { name: '망령 사신', tier: 3, glyph: '사', look: 'ninja', accent: '#b8a0ff', roles: ['광역', '처형'], dmg: 995, cd: 0.9, range: 230, kind: 'splash', r: 80,
+    reaper:  { name: '망령 사신', tier: 3, glyph: '사', look: 'ninja', accent: '#b8a0ff', roles: ['광역', '처형'], dmg: 690, cd: 0.9, range: 230, kind: 'splash', r: 80,
                skill: { name: '영혼 수확', type: 'reap', chance: 0.1, r: 130, th: 0.15, mul: 2, desc: '10% 확률로 범위 안 체력 15% 이하 일반 몬스터 즉사' } },
-    outlaw:  { name: '쌍권총 무법자', tier: 3, glyph: '무', look: 'gun', accent: '#e0b070', roles: ['다중'], dmg: 290, cd: 0.28, range: 230, kind: 'multi', n: 4,
+    outlaw:  { name: '쌍권총 무법자', tier: 3, glyph: '무', look: 'gun', accent: '#e0b070', roles: ['다중'], dmg: 200, cd: 0.28, range: 230, kind: 'multi', n: 4,
                skill: { name: '난사', type: 'rapid', chance: 0.07, mul: 2.2, dur: 3, desc: '7% 확률로 3초간 공속 2.2배' } },
-    glacier: { name: '빙하의 여왕', tier: 3, glyph: '설', look: 'mage', accent: '#bff0ff', roles: ['광역', '감속', '기절'], dmg: 960, cd: 0.9, range: 260, kind: 'splash', r: 100, slow: [0.55, 2.5],
+    glacier: { name: '빙하의 여왕', tier: 3, glyph: '설', look: 'mage', accent: '#bff0ff', roles: ['광역', '감속', '기절'], dmg: 665, cd: 0.9, range: 260, kind: 'splash', r: 100, slow: [0.55, 2.5],
                skill: { name: '절대 영도', type: 'freeze', chance: 0.09, r: 190, dur: 1.6, mul: 2, desc: '9% 확률로 거대 범위 1.6초 기절' } },
-    warlord: { name: '철혈 제독', tier: 3, glyph: '혈', look: 'captain', accent: '#c8323a', roles: ['광역', '방깎', '버프'], dmg: 770, cd: 1.1, range: 230, kind: 'splash', r: 90, shred: [15, 50, 3], aura: { globalAtk: 0.1 },
+    warlord: { name: '철혈 제독', tier: 3, glyph: '혈', look: 'captain', accent: '#c8323a', roles: ['광역', '방깎', '버프'], dmg: 530, cd: 1.1, range: 230, kind: 'splash', r: 90, shred: [15, 50, 3], aura: { globalAtk: 0.1 },
                skill: { name: '함포 사격', type: 'meteor', chance: 0.12, n: 6, r: 80, mul: 2, desc: '전체 공격력 +10%, 12% 확률로 포탄 6발' } },
-    alchemy: { name: '연금 마도사', tier: 3, glyph: '연', look: 'mage', accent: '#ffcf4a', roles: ['단일', '체력%', '마방깎'], dmg: 995, cd: 0.7, range: 250, kind: 'single', mshred: [12, 50, 3],
+    alchemy: { name: '연금 마도사', tier: 3, glyph: '연', look: 'mage', accent: '#ffcf4a', roles: ['단일', '체력%', '마방깎'], dmg: 685, cd: 0.7, range: 250, kind: 'single', mshred: [12, 50, 3],
                skill: { name: '황금 변성', type: 'percent', chance: 0.12, cur: 0.06, mul: 2, desc: '12% 확률로 대상 현재 체력 6% 피해' } },
-    hunter:  { name: '심해 사냥꾼', tier: 3, glyph: '냥', look: 'harpoon', accent: '#4ac0a0', roles: ['단일', '보스킬러', '방깎'], dmg: 945, cd: 0.6, range: 260, kind: 'single', bossMul: 2.2, shred: [10, 40, 3],
+    hunter:  { name: '심해 사냥꾼', tier: 3, glyph: '냥', look: 'harpoon', accent: '#4ac0a0', roles: ['단일', '보스킬러', '방깎'], dmg: 655, cd: 0.6, range: 260, kind: 'single', bossMul: 2.2, shred: [10, 40, 3],
                skill: { name: '작살 관통', type: 'execute', chance: 0.12, mul: 7, nova: 70, desc: '12% 확률로 7배 관통' } },
     // ---- 히든 추가 ----
-    phoenix: { name: '불사조 무희', tier: 4, glyph: '봉', look: 'mage', accent: '#ff7a3a', roles: ['다중', '버프'], dmg: 590, cd: 0.4, range: 300, kind: 'multi', n: 5,
+    phoenix: { name: '불사조 무희', tier: 4, glyph: '봉', look: 'mage', accent: '#ff7a3a', roles: ['다중', '버프'], dmg: 290, cd: 0.4, range: 300, kind: 'multi', n: 5,
                skill: { name: '불꽃 날개', type: 'rally', chance: 0.1, mul: 1.45, dur: 4, desc: '10% 확률로 전체 공속 +45%' } },
-    kraken:  { name: '크라켄 조련사', tier: 4, glyph: '크', look: 'harpoon', accent: '#9a5ad8', roles: ['광역', '기절'], dmg: 1730, cd: 1.0, range: 280, kind: 'splash', r: 120, stun: [0.15, 0.6],
+    kraken:  { name: '크라켄 조련사', tier: 4, glyph: '크', look: 'harpoon', accent: '#9a5ad8', roles: ['광역', '기절'], dmg: 850, cd: 1.0, range: 280, kind: 'splash', r: 120, stun: [0.15, 0.6],
                skill: { name: '촉수 강타', type: 'meteor', chance: 0.12, n: 8, r: 90, mul: 2, desc: '12% 확률로 촉수 8번 내려찍기' } },
-    void:    { name: '공허의 현자', tier: 4, glyph: '허', look: 'mage', accent: '#7a4aff', roles: ['광역', '마방깎', '체력%'], dmg: 705, cd: 0.6, range: 300, kind: 'chain', n: 8, mshred: [15, 60, 3],
+    void:    { name: '공허의 현자', tier: 4, glyph: '허', look: 'mage', accent: '#7a4aff', roles: ['광역', '마방깎', '체력%'], dmg: 345, cd: 0.6, range: 300, kind: 'chain', n: 8, mshred: [15, 60, 3],
                skill: { name: '공허 붕괴', type: 'percent', chance: 0.1, r: 120, cur: 0.05, mul: 1.5, desc: '10% 확률로 범위 현재 체력 5% 피해' } },
-    bladegod:{ name: '바람의 검신', tier: 4, glyph: '신', look: 'blade', accent: '#d0fff0', roles: ['단일', '보스킬러'], dmg: 1060, cd: 0.4, range: 260, kind: 'single', crit: [0.3, 3], bossMul: 2.6,
+    bladegod:{ name: '바람의 검신', tier: 4, glyph: '신', look: 'blade', accent: '#d0fff0', roles: ['단일', '보스킬러'], dmg: 525, cd: 0.4, range: 260, kind: 'single', crit: [0.3, 3], bossMul: 2.6,
                skill: { name: '천풍참', type: 'execute', chance: 0.12, mul: 12, nova: 110, desc: '12% 확률로 12배 베기 (주변 피해)' } },
-    phantom: { name: '유령 함대 제독', tier: 4, glyph: '함', look: 'captain', accent: '#7affc8', roles: ['광역', '기절'], dmg: 805, cd: 0.7, range: 290, kind: 'chain', n: 9, stun: [0.2, 0.6],
+    phantom: { name: '유령 함대 제독', tier: 4, glyph: '함', look: 'captain', accent: '#7affc8', roles: ['광역', '기절'], dmg: 395, cd: 0.7, range: 290, kind: 'chain', n: 9, stun: [0.2, 0.6],
                skill: { name: '망령 함대 출격', type: 'meteor', chance: 0.14, n: 10, r: 90, mul: 2.2, desc: '14% 확률로 유령 포탄 10발' } },
     // ---- 영원 (나무 4) ----
-    leviathan:{ name: '리바이어던 군주', tier: 5, glyph: '리', look: 'king', accent: '#2fe0c0', roles: ['광역', '감속', '체력%'], dmg: 4135, cd: 1.0, range: 320, kind: 'splash', r: 130, slow: [0.5, 3],
+    leviathan:{ name: '리바이어던 군주', tier: 5, glyph: '리', look: 'king', accent: '#2fe0c0', roles: ['광역', '감속', '체력%'], dmg: 2930, cd: 1.0, range: 320, kind: 'splash', r: 130, slow: [0.5, 3],
                skill: { name: '심해 압착', type: 'percent', chance: 0.1, r: 160, cur: 0.06, mul: 2, desc: '10% 확률로 거대 범위 현재 체력 6% 피해' } },
-    eclipse: { name: '일식의 마녀', tier: 5, glyph: '일', look: 'mage', accent: '#c08aff', roles: ['다중', '마방깎', '기절'], dmg: 1280, cd: 0.4, range: 300, kind: 'multi', n: 6, mshred: [20, 80, 3],
+    eclipse: { name: '일식의 마녀', tier: 5, glyph: '일', look: 'mage', accent: '#c08aff', roles: ['다중', '마방깎', '기절'], dmg: 905, cd: 0.4, range: 300, kind: 'multi', n: 6, mshred: [20, 80, 3],
                skill: { name: '일식', type: 'timestop', chance: 0.06, dur: 2.8, desc: '6% 확률로 주변 넓은 범위 2.8초 정지' } },
-    emperor: { name: '대해의 황제', tier: 5, glyph: '황', look: 'king', accent: '#ffe38a', roles: ['단일', '보스킬러', '버프'], dmg: 1775, cd: 0.45, range: 300, kind: 'single', crit: [0.3, 3], bossMul: 2.6, aura: { globalAtk: 0.12 },
+    emperor: { name: '대해의 황제', tier: 5, glyph: '황', look: 'king', accent: '#ffe38a', roles: ['단일', '보스킬러', '버프'], dmg: 1260, cd: 0.45, range: 300, kind: 'single', crit: [0.3, 3], bossMul: 2.6, aura: { globalAtk: 0.12 },
                skill: { name: '황제의 칙령', type: 'execute', chance: 0.12, mul: 12, nova: 140, desc: '전체 공격력 +12%, 12% 확률로 12배 일격' } },
-    stormlord:{ name: '폭풍의 군주', tier: 5, glyph: '군', look: 'mage', accent: '#ffe066', roles: ['광역', '기절'], dmg: 2035, cd: 0.8, range: 300, kind: 'chain', n: 10, stun: [0.2, 0.6],
+    stormlord:{ name: '폭풍의 군주', tier: 5, glyph: '군', look: 'mage', accent: '#ffe066', roles: ['광역', '기절'], dmg: 1440, cd: 0.8, range: 300, kind: 'chain', n: 10, stun: [0.2, 0.6],
                skill: { name: '만뢰', type: 'storm', chance: 0.12, n: 20, mul: 2.2, stun: 0.6, desc: '12% 확률로 낙뢰 20발 + 기절' } },
     // ---- 불멸 (나무 7 · 1500골드) ----
-    abyssgod:{ name: '심연의 신', tier: 6, glyph: '심', look: 'king', accent: '#1a8aff', roles: ['광역', '감속', '체력%'], dmg: 4310, cd: 1.0, range: 330, kind: 'splash', r: 150, slow: [0.55, 3],
+    abyssgod:{ name: '심연의 신', tier: 6, glyph: '심', look: 'king', accent: '#1a8aff', roles: ['광역', '감속', '체력%'], dmg: 3055, cd: 1.0, range: 330, kind: 'splash', r: 150, slow: [0.55, 3],
                skill: { name: '대심연', type: 'tsunami', chance: 0.12, mul: 3, slow: [0.6, 3], desc: '12% 확률로 주변 넓은 범위에 대해일' } },
-    sunking: { name: '태양의 해적왕', tier: 6, glyph: '태', look: 'king', accent: '#ffb000', roles: ['단일', '보스킬러', '버프'], dmg: 1840, cd: 0.45, range: 320, kind: 'single', crit: [0.35, 3], bossMul: 2.8, aura: { globalAtk: 0.15 },
+    sunking: { name: '태양의 해적왕', tier: 6, glyph: '태', look: 'king', accent: '#ffb000', roles: ['단일', '보스킬러', '버프'], dmg: 1305, cd: 0.45, range: 320, kind: 'single', crit: [0.35, 3], bossMul: 2.8, aura: { globalAtk: 0.15 },
                skill: { name: '태양 낙인', type: 'percent', chance: 0.1, cur: 0.08, mul: 10, desc: '전체 공격력 +15%, 10% 확률로 10배 + 현재 체력 8% 피해' } },
-    eternity:{ name: '영겁의 시계공', tier: 6, glyph: '겁', look: 'mage', accent: '#e6d3ff', roles: ['다중', '기절', '마방깎'], dmg: 1270, cd: 0.4, range: 320, kind: 'multi', n: 7, stun: [0.15, 0.8], mshred: [25, 90, 3],
+    eternity:{ name: '영겁의 시계공', tier: 6, glyph: '겁', look: 'mage', accent: '#e6d3ff', roles: ['다중', '기절', '마방깎'], dmg: 900, cd: 0.4, range: 320, kind: 'multi', n: 7, stun: [0.15, 0.8], mshred: [25, 90, 3],
                skill: { name: '영겁 정지', type: 'timestop', chance: 0.08, dur: 3.2, desc: '8% 확률로 주변 넓은 범위 3.2초 정지' } },
     // ---- 초월 (나무 10 · 3000골드) ----
-    worldsea:{ name: '세계의 바다', tier: 7, glyph: '해', look: 'king', accent: '#7af0ff', roles: ['광역', '감속', '체력%', '마방깎'], dmg: 4050, cd: 0.9, range: 340, kind: 'splash', r: 170, slow: [0.6, 3], mshred: [30, 100, 3],
+    worldsea:{ name: '세계의 바다', tier: 7, glyph: '해', look: 'king', accent: '#7af0ff', roles: ['광역', '감속', '체력%', '마방깎'], dmg: 2870, cd: 0.9, range: 340, kind: 'splash', r: 170, slow: [0.6, 3], mshred: [30, 100, 3],
                skill: { name: '창세의 해일', type: 'tsunami', chance: 0.12, mul: 4, slow: [0.7, 3], desc: '12% 확률로 넓은 범위 대해일' } },
-    crown:   { name: '전설의 왕관', tier: 7, glyph: '관', look: 'king', accent: '#fff3a8', roles: ['단일', '보스킬러', '버프'], dmg: 1710, cd: 0.4, range: 330, kind: 'single', crit: [0.4, 3], bossMul: 3, aura: { globalAtk: 0.2 },
+    crown:   { name: '전설의 왕관', tier: 7, glyph: '관', look: 'king', accent: '#fff3a8', roles: ['단일', '보스킬러', '버프'], dmg: 1210, cd: 0.4, range: 330, kind: 'single', crit: [0.4, 3], bossMul: 3, aura: { globalAtk: 0.2 },
                skill: { name: '왕관의 심판', type: 'execute', chance: 0.14, mul: 15, nova: 160, desc: '전체 공격력 +20%, 14% 확률로 15배 심판' } },
 
     // ---- 배 (해적선으로 만드는 히든 배 · 바다를 항해할 수 있음) ----
     pship:   { name: '해적선', tier: 1, excl: true, ship: true, move: 'swim', glyph: '선', look: 'cannon', accent: '#8b5a2b', roles: ['광역'], dmg: 45, cd: 1.3, range: 210, kind: 'splash', r: 60,
                skill: { name: '측면 포격', type: 'meteor', chance: 0.12, n: 3, r: 55, mul: 1.5, desc: '라운드 보상으로 15% 확률로 합류 · 12% 확률로 포탄 3발' } },
-    galleon: { name: '진홍 갤리온', tier: 4, ship: true, move: 'swim', glyph: '갤', look: 'cannon', accent: '#d8343a', roles: ['광역'], dmg: 1730, cd: 1.0, range: 300, kind: 'splash', r: 110,
+    galleon: { name: '진홍 갤리온', tier: 4, ship: true, move: 'swim', glyph: '갤', look: 'cannon', accent: '#d8343a', roles: ['광역'], dmg: 850, cd: 1.0, range: 300, kind: 'splash', r: 110,
                skill: { name: '일제 사격', type: 'meteor', chance: 0.14, n: 8, r: 85, mul: 2, desc: '14% 확률로 포탄 8발' } },
-    whale:   { name: '고래 모함', tier: 4, ship: true, move: 'swim', glyph: '고', look: 'cannon', accent: '#e8e8f0', roles: ['광역', '버프'], dmg: 670, cd: 0.9, range: 290, kind: 'chain', n: 7, aura: { globalAtk: 0.1 },
+    whale:   { name: '고래 모함', tier: 4, ship: true, move: 'swim', glyph: '고', look: 'cannon', accent: '#e8e8f0', roles: ['광역', '버프'], dmg: 330, cd: 0.9, range: 290, kind: 'chain', n: 7, aura: { globalAtk: 0.1 },
                skill: { name: '모함 출격', type: 'rally', chance: 0.1, mul: 1.35, dur: 4, desc: '전체 공격력 +10%, 10% 확률로 전체 공속 +35%' } },
-    galley:  { name: '해상 식당선', tier: 4, ship: true, move: 'swim', glyph: '식', look: 'cannon', accent: '#ffb86b', roles: ['버프'], dmg: 720, cd: 0.8, range: 260, kind: 'multi', n: 3, aura: { adjAspd: 0.35 },
+    galley:  { name: '해상 식당선', tier: 4, ship: true, move: 'swim', glyph: '식', look: 'cannon', accent: '#ffb86b', roles: ['버프'], dmg: 355, cd: 0.8, range: 260, kind: 'multi', n: 3, aura: { adjAspd: 0.35 },
                skill: { name: '만찬', type: 'rally', chance: 0.12, mul: 1.3, dur: 4, desc: '주변 선원 공속 +35%, 12% 확률로 전체 공속 +30%' } },
-    ark:     { name: '방주 전함', tier: 4, ship: true, move: 'swim', glyph: '방', look: 'cannon', accent: '#6a7a8a', roles: ['광역', '방깎', '마방깎'], dmg: 1805, cd: 1.1, range: 290, kind: 'splash', r: 120, shred: [15, 60, 3], mshred: [15, 60, 3],
+    ark:     { name: '방주 전함', tier: 4, ship: true, move: 'swim', glyph: '방', look: 'cannon', accent: '#6a7a8a', roles: ['광역', '방깎', '마방깎'], dmg: 890, cd: 1.1, range: 290, kind: 'splash', r: 120, shred: [15, 60, 3], mshred: [15, 60, 3],
                skill: { name: '철벽 포화', type: 'shred', chance: 0.12, r: 160, amt: 60, dur: 5, mul: 1.5, desc: '12% 확률로 넓은 범위 방어력 -60' } },
-    sunship: { name: '태양 범선', tier: 4, ship: true, move: 'swim', glyph: '태', look: 'cannon', accent: '#ffd23f', roles: ['다중', '단일'], dmg: 570, cd: 0.35, range: 290, kind: 'multi', n: 4,
+    sunship: { name: '태양 범선', tier: 4, ship: true, move: 'swim', glyph: '태', look: 'cannon', accent: '#ffd23f', roles: ['다중', '단일'], dmg: 280, cd: 0.35, range: 290, kind: 'multi', n: 4,
                skill: { name: '태양포', type: 'execute', chance: 0.12, mul: 8, nova: 100, desc: '12% 확률로 8배 태양포 (주변 피해)' } },
     // ---- 특수: 블랙펄 (스토리 7 보상, 모든 초월 조합의 재료) ----
     blackpearl: { name: '블랙펄', tier: 8, excl: true, ship: true, move: 'swim', glyph: '흑', look: 'cannon', accent: '#3a3a4a', roles: ['광역', '감속'], dmg: 1600, cd: 0.9, range: 300, kind: 'splash', r: 120, slow: [0.45, 2],
                skill: { name: '저주받은 포격', type: 'meteor', chance: 0.14, n: 8, r: 90, mul: 2, desc: '심해 신전 보상 · 모든 초월 조합에 꼭 필요 · 14% 확률로 유령 포탄 8발' } },
     // ---- 랜덤전용: 스토리·보물상자 보상인 '랜덤전용 뽑기'로만 얻을 수 있음 ----
-    tide:    { name: '조류술사', tier: 2, excl: true, glyph: '조', look: 'mage', accent: '#4fd1ff', roles: ['감속', '방깎'], dmg: 185, cd: 0.9, range: 230, kind: 'splash', r: 70, slow: [0.35, 2], shred: [10, 40, 3],
+    tide:    { name: '조류술사', tier: 2, excl: true, glyph: '조', look: 'mage', accent: '#4fd1ff', roles: ['감속', '방깎'], dmg: 150, cd: 0.9, range: 230, kind: 'splash', r: 70, slow: [0.35, 2], shred: [10, 40, 3],
                skill: { name: '역류', type: 'shred', chance: 0.12, r: 130, amt: 45, dur: 5, mul: 2, slow: [0.5, 2], desc: '12% 확률로 범위 방어력 -45, 감속' } },
-    ghost:   { name: '유령 선장', tier: 3, excl: true, glyph: '령', look: 'captain', accent: '#9ff0d0', roles: ['광역', '기절'], dmg: 775, cd: 0.9, range: 250, kind: 'chain', n: 7, stun: [0.2, 0.6],
+    ghost:   { name: '유령 선장', tier: 3, excl: true, glyph: '령', look: 'captain', accent: '#9ff0d0', roles: ['광역', '기절'], dmg: 535, cd: 0.9, range: 250, kind: 'chain', n: 7, stun: [0.2, 0.6],
                skill: { name: '망령의 함대', type: 'meteor', chance: 0.14, n: 6, r: 80, mul: 2, desc: '14% 확률로 유령 포탄 6발' } },
-    dragon:  { name: '해룡 조련사', tier: 3, excl: true, glyph: '룡', look: 'harpoon', accent: '#3fe08f', roles: ['단일', '보스킬러'], dmg: 820, cd: 0.45, range: 240, kind: 'single', bossMul: 2.5,
+    dragon:  { name: '해룡 조련사', tier: 3, excl: true, glyph: '룡', look: 'harpoon', accent: '#3fe08f', roles: ['단일', '보스킬러'], dmg: 565, cd: 0.45, range: 240, kind: 'single', bossMul: 2.5,
                skill: { name: '해룡의 숨결', type: 'execute', chance: 0.14, mul: 9, nova: 90, desc: '14% 확률로 9배 숨결 (주변 피해)' } },
-    star:    { name: '별빛 항해사', tier: 4, excl: true, glyph: '별', look: 'king', accent: '#bfe3ff', roles: ['버프', '다중'], dmg: 430, cd: 0.4, range: 300, kind: 'multi', n: 5, aura: { globalAtk: 0.25 },
+    star:    { name: '별빛 항해사', tier: 4, excl: true, glyph: '별', look: 'king', accent: '#bfe3ff', roles: ['버프', '다중'], dmg: 215, cd: 0.4, range: 300, kind: 'multi', n: 5, aura: { globalAtk: 0.25 },
                skill: { name: '별자리 항법', type: 'rally', chance: 0.1, mul: 1.5, dur: 4, desc: '전체 공격력 +25%, 10% 확률로 전체 공속 +50%' } },
   };
 
@@ -1113,31 +1113,31 @@ const RD = (() => {
     alchemy: ['rune', 'curse', 'venom'],
     hunter:  ['venom', 'gale', 'brawler'],
 
-    // ---- 히든 = 전설 + 희귀함 + 안흔함 (전설보다 살짝 위) ----
-    abyss:   ['witch', 'storm', 'frost'],
-    chrono:  ['thunder', 'rune', 'drummer'],
-    king:    ['saint', 'marshal', 'twin'],
-    phoenix: ['flame', 'dancer', 'frost'],
-    kraken:  ['warlord', 'brawler', 'bomber'],
-    void:    ['alchemy', 'curse', 'acid'],
-    bladegod:['saint', 'gale', 'twin'],
-    phantom: ['ghost', 'tide', 'frost'],
-    // ---- 배 조합 → 히든 배 = 해적선(안흔함) + 전설 + 희귀함 ----
-    galleon: ['pship', 'flame', 'iron'],
-    whale:   ['pship', 'thunder', 'marshal'],
-    galley:  ['pship', 'warlord', 'brawler'],
-    ark:     ['pship', 'alchemy', 'storm'],
-    sunship: ['pship', 'outlaw', 'gale'],
+    // ---- 히든 = 전설보다 살짝 아래: 희귀함 2개 + 안흔함·흔함 섞어서 (재료 2~4개, 원랜디 히든처럼 들쭉날쭉) ----
+    abyss:   ['storm', 'curse', 'frost'],
+    chrono:  ['rune', 'dancer', 'drummer'],
+    king:    ['marshal', 'brawler', 'twin', 'sword'],
+    phoenix: ['dancer', 'iron', 'bomber'],
+    kraken:  ['brawler', 'iron', 'harpoon'],
+    void:    ['rune', 'curse', 'acid'],
+    bladegod:['gale', 'shadow'],
+    phantom: ['tide', 'shadow', 'frost'],
+    // ---- 배 조합 → 히든 배 = 해적선 + 희귀함 + 안흔함 (원랜디 써니호·발라티에처럼) ----
+    galleon: ['pship', 'iron', 'bomber'],
+    whale:   ['pship', 'storm', 'marshal'],
+    galley:  ['pship', 'brawler', 'drummer'],
+    ark:     ['pship', 'rune', 'acid'],
+    sunship: ['pship', 'gale', 'twin'],
 
     // ---- 영원 · 불멸 · 초월 = 같은 급 (히든 + 전설 + 희귀함). 초월은 블랙펄 + 히든 + 전설 ----
     leviathan: ['abyss', 'glacier', 'dancer'],
-    eclipse:   ['void', 'reaper', 'curse'],
+    eclipse:   ['void', 'reaper', 'curse', 'acid'],
     emperor:   ['king', 'warlord', 'marshal'],
     stormlord: ['kraken', 'thunder', 'storm'],
     abyssgod:  ['abyss', 'witch', 'rune'],
-    sunking:   ['bladegod', 'flame', 'shadow'],
+    sunking:   ['bladegod', 'flame', 'shadow', 'twin'],
     eternity:  ['chrono', 'glacier', 'rune'],
-    worldsea:  ['blackpearl', 'abyss', 'glacier'],
+    worldsea:  ['blackpearl', 'abyss', 'glacier', 'dancer'],
     crown:     ['blackpearl', 'king', 'saint'],
 
   };
@@ -4303,7 +4303,7 @@ window.RENDER = window.RENDER2D;
     if (sig === bookSig) return; bookSig = sig;
     const ready = (id) => S.phase === 'play' && !!RD.recipeUnits(S, ME, id, null) && aff(id);
     const bookIds = (t) => t === 10 ? RD.SHIPS : t === 4 ? RD.BY_TIER[4].concat(RD.SHIPS) : RD.BY_TIER[t];
-    $('tabs').innerHTML = [1, 2, 3, 4, 5, 6, 7, 10].map(t => {
+    $('tabs').innerHTML = [1, 2, 4, 3, 5, 6, 7, 10].map(t => {
       const any = bookIds(t).some(ready);
       if (t === 10) return `<button data-a="tab" data-t="10" aria-pressed="${tab === 10}" style="${tab === 10 ? '' : 'color:#d8a060'}">⛵ 배${any ? ' <span class="dot"></span>' : ''}</button>`;
       return `<button data-a="tab" data-t="${t}" aria-pressed="${t === tab}" style="${t === tab ? '' : `color:${TIERS[t].color}`}">${TIERS[t].name}${any ? ' <span class="dot"></span>' : ''}</button>`;
@@ -4893,7 +4893,8 @@ window.RENDER = window.RENDER2D;
     return `<div class="mc-h">${mon ? (mon.kind === 'story' ? STORIES[mon.idx].name : mon.boss ? '보스' : '몬스터') + ` · 체력 ${fmt(Math.max(0, Math.ceil(mon.hp)))}` : '건물 · 보급'}</div><div class="mc-g">${mb('selb', '강화소', '', { attrs: ' data-k="upgrade"' })}${mb('selb', '💰골드 도박', '', { attrs: ' data-k="ggold"' })}${mb('selb', '🎲유닛 도박', '', { attrs: ' data-k="gunit"' })}${mb('selb', '✨위습 제단', '×' + pl.wisps.reduce((a, b) => a + b, 0), { attrs: ' data-k="wisp"', hot: pl.wisps.some(n => n > 0) })}${pl.draws ? mb('draw', '랜덤 뽑기', '×' + pl.draws, { hot: true }) : ''}${mb('mview', '내 라인', '', { attrs: ' data-v="lane"' })}${mb('mview', '스토리존', '', { attrs: ' data-v="story"' })}</div>`;
   }
   // ---- 맨 아래 조합 막대 (원랜디처럼): 등급 낮은 것부터 왼쪽에, 지금 가진 재료 수 표시 ----
-  const BAR_IDS = Object.keys(RECIPES).sort((a, b) => UNITS[a].tier - UNITS[b].tier || (UNITS[a].ship ? 1 : 0) - (UNITS[b].ship ? 1 : 0) || RECIPES[a].length - RECIPES[b].length);
+  const tRank = (t) => t === 4 ? 3 : t === 3 ? 4 : t; // 히든은 전설보다 살짝 아래라 전설 앞에 둠
+  const BAR_IDS = Object.keys(RECIPES).sort((a, b) => tRank(UNITS[a].tier) - tRank(UNITS[b].tier) || (UNITS[a].ship ? 1 : 0) - (UNITS[b].ship ? 1 : 0) || RECIPES[a].length - RECIPES[b].length);
   let barSig = '', barT = 0, barSel = null;
   { // PC: 마우스 휠·끌기로 조합 막대 좌우 스크롤 (불멸·초월까지 보기)
     const L = document.getElementById('mbList');
