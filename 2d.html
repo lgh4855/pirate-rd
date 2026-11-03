@@ -1239,8 +1239,15 @@ const RD = (() => {
     const pt = deckPoint(s, p); return addUnit(s, p, type, pt.x, pt.y);
   }
   function grant(s, p, n, round) {
-    const ship = round && rand(s) < CFG.pirateShipChance; // 가끔 해적선이 대신 합류
-    for (let k = 0; k < n; k++) newUnit(s, p, ship && k === 0 ? 'pship' : pickUnit(s, pickTier(s, CFG.summonOdds)));
+    // 라운드 보상: 흔함, 또는 15% 확률로 해적선 / 시작 선원: 흔함, 또는 15% 확률로 안흔함(해적선 포함)
+    let ship = false;
+    for (let k = 0; k < n; k++) {
+      let type;
+      if (rand(s) < CFG.pirateShipChance) { const pool = round ? ['pship'] : BY_TIER[1].concat(['pship']); type = pool[Math.floor(rand(s) * pool.length)]; }
+      else type = pickUnit(s, 0);
+      if (type === 'pship') ship = true;
+      newUnit(s, p, type);
+    }
     if (ship) s.events.push({ e: 'pship', p });
     s.events.push({ e: 'grant', p, n });
   }
@@ -1725,7 +1732,7 @@ const RD = (() => {
     s.players.forEach((pl, p) => { if (pl.alive) grant(s, p, CFG.unitsPerWave, true); });
   }
   // 맵 위에 놓이는 위습 자리 (갑판 위쪽 모서리에 등급순으로 한 줄)
-  function wispSpots(s, p) {
+  function wispSpots(s, p) { return []; // 위습은 맵에 띄우지 않고 위습 제단 안에서만 사용
     const D = GEO[p].deck, out = []; let k = 0;
     const left = p >= 2, top = p % 2 === 0;
     s.players[p].wisps.forEach((n, t) => { for (let i = 0; i < n && k < 16; i++, k++) {
