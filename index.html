@@ -608,6 +608,14 @@ body:not(.m) .mh-gal { display: none; }
 .gal-row.many .gal-u:not(.res) img { width: 40px; height: 54px; }
 .gal-row.many .gal-u:not(.res)::before { top: 40px; height: 11px; }
 .gal-badge { position: absolute; top: 0; right: 0; z-index: 2; font-size: 9px; font-weight: 800; padding: 0 4px; border-radius: 6px; background: #ffd23f; color: #0b1620; }
+
+/* 추천 조합 */
+.mb-sep.rec { color: #ffd23f; }
+.mb-it.rec { border-color: #ffd23f !important; box-shadow: 0 0 9px rgba(255,210,63,.75); }
+.mb-it.rec small { color: #ffd23f; font-weight: 800; }
+.gal-row { flex-wrap: wrap; }
+.gal-plan { flex-basis: 100%; text-align: center; font-size: 10.5px; color: #fff; text-shadow: 0 1px 2px #000; padding: 2px 4px 4px; }
+.gal-sec.rec span { background: rgba(60,40,0,0.85); }
 </style>
 </head><body>
 <script>
@@ -1031,24 +1039,6 @@ const RD = (() => {
     chemist:    { name: '독약 조제사', tier: 2, glyph: '약', look: 'mage', accent: '#7ad05a', roles: ['방깎'], dmg: 110, cd: 0.8, range: 210, kind: 'single', shred: [8, 35, 3],
                skill: { name: '부식 연기', type: 'shred', chance: 0.12, r: 110, amt: 30, dur: 4, mul: 1, desc: '12% 확률로 범위 방어력 -30' } },
 
-    // ---- 희귀함 (같은 선원이 많이 모였을 때 쓰는 대량 조합) ----
-    bladestorm: { name: '칼날 폭풍', tier: 3, glyph: '폭', look: 'blade', accent: '#e8e8f0', roles: ['광역'], dmg: 215, cd: 0.8, range: 170, kind: 'splash', r: 70,
-               skill: { name: '칼날 회오리', type: 'nova', chance: 0.12, r: 130, mul: 2.5, desc: '12% 확률로 큰 칼날 회오리' } },
-    volley:     { name: '일제 사격대', tier: 3, glyph: '일', look: 'gun', accent: '#c8a060', roles: ['단일', '다중'], dmg: 115, cd: 0.5, range: 230, kind: 'multi', n: 3,
-               skill: { name: '일제 사격', type: 'rapid', chance: 0.1, mul: 2, dur: 3, desc: '10% 확률로 3초간 공속 2배' } },
-    whaler:     { name: '고래잡이 대장', tier: 3, glyph: '고', look: 'harpoon', accent: '#3ab8b0', roles: ['단일', '감속', '보스킬러'], dmg: 340, cd: 1.0, range: 220, kind: 'single', slow: [0.45, 2], bossMul: 1.8,
-               skill: { name: '거대 작살', type: 'execute', chance: 0.12, mul: 5, desc: '12% 확률로 5배 일격' } },
-    battery:    { name: '포대장', tier: 3, glyph: '대', look: 'cannon', accent: '#8a6a4a', roles: ['광역'], dmg: 375, cd: 1.4, range: 230, kind: 'splash', r: 85,
-               skill: { name: '포대 집중 사격', type: 'meteor', chance: 0.12, n: 6, r: 70, mul: 1.5, desc: '12% 확률로 포탄 6발' } },
-    twinlord:   { name: '쌍검 대장', tier: 3, glyph: '장', look: 'blade', accent: '#ff7a59', roles: ['단일'], dmg: 120, cd: 0.35, range: 175, kind: 'single', crit: [0.2, 2.5],
-               skill: { name: '연속 난도질', type: 'rapid', chance: 0.1, mul: 2, dur: 3, desc: '10% 확률로 3초간 공속 2배' } },
-    marksman:   { name: '명사수', tier: 3, glyph: '명', look: 'gun', accent: '#2e3a46', roles: ['단일', '보스킬러'], dmg: 510, cd: 1.5, range: 340, kind: 'single', bossMul: 2,
-               skill: { name: '관통 저격', type: 'execute', chance: 0.15, mul: 5, desc: '15% 확률로 5배 저격' } },
-    demolisher: { name: '폭파 대장', tier: 3, glyph: '파', look: 'cannon', accent: '#ff6a3a', roles: ['광역'], dmg: 325, cd: 1.2, range: 200, kind: 'splash', r: 80,
-               skill: { name: '연쇄 폭파', type: 'meteor', chance: 0.12, n: 5, r: 65, mul: 1.5, desc: '12% 확률로 폭탄 5발' } },
-    icewarden:  { name: '빙결 수호자', tier: 3, glyph: '결', look: 'mage', accent: '#bfefff', roles: ['광역', '감속', '기절'], dmg: 270, cd: 1.0, range: 220, kind: 'splash', r: 70, slow: [0.5, 2.2],
-               skill: { name: '빙결진', type: 'freeze', chance: 0.1, r: 120, dur: 1.2, mul: 1.5, desc: '10% 확률로 넓은 범위 1.2초 기절' } },
-
     gale:    { name: '바람 검호', tier: 3, glyph: '풍', look: 'blade', accent: '#9effd2', roles: ['단일', '다중'], dmg: 90, cd: 0.35, range: 180, kind: 'multi', n: 2,
                skill: { name: '회오리 베기', type: 'nova', chance: 0.1, r: 110, mul: 2, desc: '10% 확률로 회오리 범위 공격' } },
     shadow:  { name: '그림자 닌자', tier: 3, glyph: '영', look: 'ninja', accent: '#6a5acd', roles: ['단일', '보스킬러'], dmg: 135, cd: 0.4, range: 190, kind: 'single', crit: [0.25, 3], bossMul: 1.6,
@@ -1161,7 +1151,7 @@ const RD = (() => {
   };
 
   // 공격 종류: 물뎀(p) · 마뎀(m). 물뎀은 방어력, 마뎀은 마법 저항에 막힘
-  const MAGIC = ['frost', 'acid', 'tidecaller', 'chemist', 'icewarden', 'storm', 'curse', 'thunder', 'witch', 'flame', 'abyss', 'chrono', 'tide', 'ghost', 'star',
+  const MAGIC = ['frost', 'acid', 'tidecaller', 'chemist', 'storm', 'curse', 'thunder', 'witch', 'flame', 'abyss', 'chrono', 'tide', 'ghost', 'star',
     'dancer', 'rune', 'reaper', 'glacier', 'alchemy', 'phoenix', 'void', 'phantom', 'leviathan', 'eclipse', 'stormlord', 'abyssgod', 'eternity', 'worldsea'];
   for (const k in UNITS) UNITS[k].dtype = MAGIC.includes(k) ? 'm' : 'p';
 
@@ -1184,16 +1174,6 @@ const RD = (() => {
     quarter:    ['drummer', 'twin', 'cannon'],
     cutthroat:  ['twin', 'bomber', 'gun'],
     chemist:    ['acid', 'sniper', 'harpoon'],
-
-    // ---- 희귀함 대량 조합: 같은 선원이 많이 나왔을 때 (흔함 7 + 2, 또는 같은 안흔함 4) ----
-    bladestorm: ['sword', 'sword', 'sword', 'sword', 'sword', 'sword', 'sword', 'gun', 'gun'],
-    volley:     ['gun', 'gun', 'gun', 'gun', 'gun', 'gun', 'gun', 'sword', 'sword'],
-    whaler:     ['harpoon', 'harpoon', 'harpoon', 'harpoon', 'harpoon', 'harpoon', 'harpoon', 'cannon', 'cannon'],
-    battery:    ['cannon', 'cannon', 'cannon', 'cannon', 'cannon', 'cannon', 'cannon', 'harpoon', 'harpoon'],
-    twinlord:   ['twin', 'twin', 'twin', 'twin'],
-    marksman:   ['sniper', 'sniper', 'sniper', 'sniper'],
-    demolisher: ['bomber', 'bomber', 'bomber', 'bomber'],
-    icewarden:  ['frost', 'frost', 'frost', 'frost'],
 
     // ---- 희귀함 = 특별함 + 특별함, 또는 특별함 + 안흔함 2개 ----
     gale:    ['deckhand', 'twin', 'twin'],
@@ -1957,15 +1937,6 @@ window.DESIGNS = {
   quarter:   { outfit: '#f4ecd8', pants: '#3a3a5a', skin: '#e8b98c', hair: '#4a3020', hairStyle: 'short', hat: 'cap', hatC: '#e8c05a', weapon: 'banner', hatC2: '#e8c05a', extras: ['epaulets'], build: 1 },
   cutthroat: { outfit: '#3a1a2a', pants: '#1c1c22', skin: '#e0b088', hair: '#1a1a1a', hairStyle: 'spiky', hat: 'headband', hatC: '#ff5a6a', weapon: 'dualswords', extras: ['eyepatch'], build: 0.95 },
   chemist:   { outfit: '#4a7a3a', pants: '#2a3a20', skin: '#d8e0b0', hair: '#5a3a2a', hairStyle: 'wild', hat: 'gasmask', hatC: '#5a6a4a', weapon: 'flask', extras: ['apron'], build: 1 },
-  // ---- 희귀함 대량 조합 ----
-  bladestorm:{ outfit: '#e8e8f0', pants: '#3a3a44', skin: '#f2c9a0', hair: '#c0c0c8', hairStyle: 'spiky', hat: 'headband', hatC: '#3b6fb6', weapon: 'dualswords', extras: ['scarf'], build: 1.05 },
-  volley:    { outfit: '#6a5a3a', pants: '#3a3020', skin: '#e8b98c', hair: '#2a1d14', hairStyle: 'short', hat: 'tricorn', hatC: '#5a3a20', hatC2: '#c8a060', weapon: 'musket', extras: ['bandolier', 'epaulets'], build: 1.05 },
-  whaler:    { outfit: '#f2f2f2', pants: '#1f6a6a', skin: '#c8956a', hair: '#8a5a2a', hairStyle: 'short', hat: 'furhood', hatC: '#3ab8b0', weapon: 'harpoon', extras: ['stripes', 'longbeard'], build: 1.25 },
-  battery:   { outfit: '#8a6a4a', pants: '#4a3a2a', skin: '#f0c094', hair: '#3a2a1a', hairStyle: 'bald', hat: 'greathelm', hatC: '#7a828c', weapon: 'bigcannon', extras: ['shoulderpads', 'beard'], build: 1.35 },
-  twinlord:  { outfit: '#2b2b33', pants: '#1c1c22', skin: '#f2c9a0', hair: '#ff7a59', hairStyle: 'spiky', hat: 'headband', hatC: '#ff3b3b', weapon: 'dualswords', extras: ['scarf', 'cape'], cape: '#ff7a59', build: 1.05 },
-  marksman:  { outfit: '#3a4a3a', pants: '#2a2f2a', skin: '#e0b088', hair: '#2a2a2a', hairStyle: 'short', hat: 'cap', hatC: '#2e3a46', weapon: 'rifle', extras: ['goggles', 'cape'], cape: '#2e3a46', build: 1 },
-  demolisher:{ outfit: '#e05a3a', pants: '#5a3a2a', skin: '#f2c9a0', hair: '#c05a1a', hairStyle: 'wild', hat: 'aviator', hatC: '#7a4a22', weapon: 'bomb', extras: ['goggles', 'bandolier', 'apron'], build: 1.15 },
-  icewarden: { outfit: '#bfefff', pants: '#3a5a7a', skin: '#f6dcc4', hair: '#ffffff', hairStyle: 'long', hat: 'furhood', hatC: '#e8fbff', weapon: 'icestaff', extras: ['cape', 'halo'], cape: '#9fe3ff', build: 1.05 },
   // ---- 배 ----
   pship: { outfit: '#6a4a2a', pants: '#3a2a1a', skin: '#e8b98c', hair: '#2a1a10', hairStyle: 'bald', hat: 'none', weapon: 'bigcannon', extras: [], build: 1, ship: true, hull: '#7a4e2a', sail: '#f2ead8', trim: '#1a1a1a', flag: '#d8343a', size: 1.0, masts: 2 },
   galleon: { outfit: '#6a4a2a', pants: '#3a2a1a', skin: '#e8b98c', hair: '#2a1a10', hairStyle: 'bald', hat: 'none', weapon: 'bigcannon', extras: [], build: 1, ship: true, hull: '#8a2a22', sail: '#f6d8c8', trim: '#c8281e', flag: '#ffd23f', size: 1.2, masts: 3 },
@@ -5067,12 +5038,25 @@ window.RENDER = window.RENDER2D;
     const cn = can.filter(Boolean).length, chain = !ok && cn === can.length && pl.wood >= (T.wood || 0) && pl.gold >= (T.gold || 0);
     return { have, n, N: have.length, ok, can, cn, chain, steps };
   }
+  // 추천 조합: 지금 가진 선원(같은 선원이 몰려 있어도)으로 하위 조합부터 이어서 만들 수 있는 가장 높은 등급
+  let recBest = -1;
+  function recommend(inv) {
+    const out = [];
+    for (const id of BAR_IDS) { const b = barInfo(id, inv); if (b.ok || b.chain) out.push({ id, b, r: tRank(UNITS[id].tier) }); }
+    out.sort((x, y) => y.r - x.r || x.b.steps.length - y.b.steps.length);
+    const top = out.slice(0, 3).filter(o => o.r >= 1);
+    if (top.length && top[0].r > recBest) { recBest = top[0].r; if (top[0].r >= 2 && S.t > 1) say(`추천 조합: ${UNITS[top[0].id].name} (${TIERS[UNITS[top[0].id].tier].name}) — 가진 선원으로 만들 수 있어요`); }
+    if (!top.length) recBest = -1;
+    return top;
+  }
   function mBar(hide) {
     const bar = document.getElementById('mbar'); if (!bar) return;
     if (bar.hidden !== hide) { bar.hidden = hide; placeMinimap(); }
     if (hide) { const pp = document.getElementById('mbPop'); if (pp) pp.hidden = true; return; }
     const now = performance.now(); if (now - barT < 300) return; barT = now;
     let last = -1, html = ''; const inv = invOf();
+    const recs = recommend(inv);
+    if (recs.length) { html += `<span class="mb-sep rec">⭐추천</span>`; for (const o of recs) { const d = UNITS[o.id], T = TIERS[d.tier]; html += `<button class="mb-it rec${o.b.ok ? ' ok' : ' chain'}${barSel === o.id ? ' on' : ''}" data-a="bar" data-id="${o.id}" style="--tc:${T.color}" aria-label="추천 ${d.name}"><i style="background-image:url(${pic(o.id)})"></i><small>⭐${T.name.slice(0, 2)}</small></button>`; } }
     for (const id of BAR_IDS) {
       const d = UNITS[id], T = TIERS[d.tier], b = barInfo(id, inv);
       if (d.tier !== last) { last = d.tier; html += `<span class="mb-sep" style="color:${T.color}">${T.name}</span>`; }
@@ -5109,11 +5093,18 @@ window.RENDER = window.RENDER2D;
     const g = document.getElementById('gal'); if (!g || g.hidden || !S) return;
     const now = performance.now(); if (!force && now - galT < 500) return; galT = now;
     const inv = invOf(); let html = '', last = -1;
+    const row = (id, b, extra) => { const d = UNITS[id], T = TIERS[d.tier]; const ings = RECIPES[id].map((t, k) => `<div class="gal-u${b.have[k] ? ' own' : b.can[k] ? ' can' : ''}" style="--tc:${TIERS[UNITS[t].tier].color}"><img src="${figImg(t)}" alt=""><small>${UNITS[t].name}</small></div>`).join('');
+      return `<div class="gal-row${RECIPES[id].length > 4 ? ' many' : ''}"><div class="gal-ings">${ings}</div><span class="gal-ar">➜</span><button class="gal-u res${b.ok ? ' ok' : b.chain ? ' chain' : ''}" data-a="galres" data-id="${id}" style="--tc:${T.color}"><img src="${figImg(id)}" alt=""><small>${d.name}</small></button>${extra || ''}</div>`; };
+    const recs = recommend(inv);
+    if (recs.length) {
+      html += `<div class="gal-sec rec" style="--tc:#ffd23f"><span>⭐ 추천 조합</span></div>`;
+      for (const o of recs) html += row(o.id, o.b, o.b.steps.length ? `<div class="gal-plan">순서: ${o.b.steps.map(t => `<b style="color:${TIERS[UNITS[t].tier].color}">${UNITS[t].name}</b>`).join(' → ')} → <b style="color:${TIERS[UNITS[o.id].tier].color}">${UNITS[o.id].name}</b></div>` : '');
+    }
     for (const id of BAR_IDS) {
       const d = UNITS[id], T = TIERS[d.tier], b = barInfo(id, inv);
       if (tRank(d.tier) !== last) { last = tRank(d.tier); html += `<div class="gal-sec" style="--tc:${T.color}"><span>${T.name} 조합</span></div>`; }
       const ings = RECIPES[id].map((t, k) => `<div class="gal-u${b.have[k] ? ' own' : b.can[k] ? ' can' : ''}" style="--tc:${TIERS[UNITS[t].tier].color}"><img src="${figImg(t)}" alt=""><small>${UNITS[t].name}</small></div>`).join('');
-      html += `<div class="gal-row${RECIPES[id].length > 4 ? ' many' : ''}"><div class="gal-ings">${ings}</div><span class="gal-ar">➜</span><button class="gal-u res${b.ok ? ' ok' : b.chain ? ' chain' : ''}" data-a="galres" data-id="${id}" style="--tc:${T.color}">${RECIPES[id].length >= 4 && new Set(RECIPES[id]).size <= 2 ? '<span class="gal-badge">대량</span>' : ''}<img src="${figImg(id)}" alt=""><small>${d.name}</small></button></div>`;
+      html += `<div class="gal-row${RECIPES[id].length > 4 ? ' many' : ''}"><div class="gal-ings">${ings}</div><span class="gal-ar">➜</span><button class="gal-u res${b.ok ? ' ok' : b.chain ? ' chain' : ''}" data-a="galres" data-id="${id}" style="--tc:${T.color}"><img src="${figImg(id)}" alt=""><small>${d.name}</small></button></div>`;
     }
     if (html !== galSig) { const B = document.getElementById('galBody'), st = B.scrollTop; B.innerHTML = html; B.scrollTop = st; galSig = html; }
   }
