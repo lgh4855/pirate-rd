@@ -5038,15 +5038,16 @@ window.RENDER = window.RENDER2D;
   const tRank = (t) => t === 5 ? 4 : t === 4 ? 5 : t; // 히든은 전설보다 살짝 아래라 전설 앞에 둠
   const BAR_IDS = Object.keys(RECIPES).sort((a, b) => tRank(UNITS[a].tier) - tRank(UNITS[b].tier) || (UNITS[a].ship ? 1 : 0) - (UNITS[b].ship ? 1 : 0) || RECIPES[a].length - RECIPES[b].length);
   // ---- 맵 맨 아래 조합 광장: 원랜디처럼 재료 선원 동상이 줄지어 서 있고 끝에 결과 선원 ----
-  const GAL = (() => {
+  function buildGal(canList) {
     const narrow = window.matchMedia('(max-width: 820px), (pointer: coarse) and (max-height: 520px)').matches; // 휴대폰은 한 줄씩, PC는 세 줄씩
     const x0 = narrow ? 560 : 40, x1 = narrow ? 1000 : WORLD.w - 40, y0 = WORLD.h + 70, NC = narrow ? 1 : 3, colW = (x1 - x0) / NC, SP = 62, RH = 92, TH = 56;
     const statues = [], items = [], titles = [], cols = NC > 1 ? [x0 + colW, x0 + colW * 2] : [];
     let y = y0 + 10, last = -1, c = 0, n = 0;
-    const order = BAR_IDS.slice();
-    for (const id of order) {
-      const r = tRank(UNITS[id].tier);
-      if (r !== last) { if (c) { y += RH; c = 0; } last = r; titles.push({ x: (x0 + x1) / 2, y: y + 22, text: `${TIERS[UNITS[id].tier].name} 조합`, color: TIERS[UNITS[id].tier].color }); y += TH; }
+    // 맨 위: 지금 만들 수 있는 조합 전부 (가진 선원 그대로 또는 하위 조합부터)
+    const order = (canList || []).map(id => ({ id, sec: 'can' })).concat(BAR_IDS.map(id => ({ id, sec: tRank(UNITS[id].tier) })));
+    titles.push({ x: (x0 + x1) / 2, y: y + 22, text: canList && canList.length ? `⭐ 지금 만들 수 있는 조합 ${canList.length}개` : '⭐ 지금 만들 수 있는 조합 없음', color: '#ffd23f' }); y += TH; last = 'can';
+    for (const { id, sec } of order) {
+      if (sec !== last) { if (c) { y += RH; c = 0; } last = sec; y += 10; titles.push({ x: (x0 + x1) / 2, y: y + 22, text: `${TIERS[UNITS[id].tier].name} 조합`, color: TIERS[UNITS[id].tier].color }); y += TH; }
       const R = RECIPES[id], wGroup = R.length * SP + 30 + 56, cx0 = x0 + c * colW + (colW - wGroup) / 2, fy = y + 62;
       R.forEach((t, k) => { const u = { id: -(20000 + n++), type: t, owner: 0, x: cx0 + k * SP + SP / 2, y: fy, tx: 0, ty: 0, order: 'idle', moving: false, face: 1, statue: true }; statues.push(u); items.push({ u, rid: id, k, res: false }); });
       const ru = { id: -(20000 + n++), type: id, owner: 0, x: cx0 + R.length * SP + 30 + 28, y: fy, tx: 0, ty: 0, order: 'idle', moving: false, face: 1, statue: true };
@@ -5055,12 +5056,16 @@ window.RENDER = window.RENDER2D;
     }
     if (c) y += RH;
     return { x0, x1, y0, y1: y + 20, statues, items, titles, cols };
-  })();
+  }
+  let GAL = buildGal([]), galCanSig = '';
   window.RDGAL = GAL;
   let galStat = {}, galStatT = 0;
   function galStatus() {
     const now = performance.now(); if (now - galStatT < 500) return galStat; galStatT = now;
-    const inv = invOf(), st = {}; for (const id of BAR_IDS) st[id] = barInfo(id, inv); return (galStat = st);
+    const inv = invOf(), st = {}; for (const id of BAR_IDS) st[id] = barInfo(id, inv);
+    const can = BAR_IDS.filter(id => st[id].ok || st[id].chain).sort((x, y) => tRank(UNITS[y].tier) - tRank(UNITS[x].tier) || (st[y].ok - st[x].ok));
+    const sig = can.join(','); if (sig !== galCanSig) { galCanSig = sig; GAL = buildGal(can); window.RDGAL = GAL; for (const u of GAL.statues) u.owner = ME; }
+    return (galStat = st);
   }
   function drawGallery() { // 동상 위에 이름·빛나는 발판·화살표·구역 제목 (2D·3D 공통 오버레이)
     if (!S || view.y < WORLD.h - 300) return;
@@ -5128,7 +5133,7 @@ window.RENDER = window.RENDER2D;
     const out = [];
     for (const id of BAR_IDS) { const b = barInfo(id, inv); if (b.ok || b.chain) out.push({ id, b, r: tRank(UNITS[id].tier) }); }
     out.sort((x, y) => y.r - x.r || x.b.steps.length - y.b.steps.length);
-    const top = out.slice(0, 3).filter(o => o.r >= 1);
+    const top = out.slice(0, 12).filter(o => o.r >= 1);
     if (top.length && top[0].r > recBest) { recBest = top[0].r; if (top[0].r >= 2 && S.t > 1) say(`추천 조합: ${UNITS[top[0].id].name} (${TIERS[UNITS[top[0].id].tier].name}) — 가진 선원으로 만들 수 있어요`); }
     if (!top.length) recBest = -1;
     return top;
@@ -5140,7 +5145,7 @@ window.RENDER = window.RENDER2D;
     const now = performance.now(); if (now - barT < 300) return; barT = now;
     let last = -1, html = ''; const inv = invOf();
     const recs = recommend(inv);
-    if (recs.length) { html += `<span class="mb-sep rec">⭐추천</span>`; for (const o of recs) { const d = UNITS[o.id], T = TIERS[d.tier]; html += `<button class="mb-it rec${o.b.ok ? ' ok' : ' chain'}${barSel === o.id ? ' on' : ''}" data-a="bar" data-id="${o.id}" style="--tc:${T.color}" aria-label="추천 ${d.name}"><i style="background-image:url(${pic(o.id)})"></i><small>⭐${T.name.slice(0, 2)}</small></button>`; } }
+    if (recs.length) { html += `<span class="mb-sep rec">⭐가능</span>`; for (const o of recs) { const d = UNITS[o.id], T = TIERS[d.tier]; html += `<button class="mb-it rec${o.b.ok ? ' ok' : ' chain'}${barSel === o.id ? ' on' : ''}" data-a="bar" data-id="${o.id}" style="--tc:${T.color}" aria-label="추천 ${d.name}"><i style="background-image:url(${pic(o.id)})"></i><small>⭐${T.name.slice(0, 2)}</small></button>`; } }
     for (const id of BAR_IDS) {
       const d = UNITS[id], T = TIERS[d.tier], b = barInfo(id, inv);
       if (d.tier !== last) { last = d.tier; html += `<span class="mb-sep" style="color:${T.color}">${T.name}</span>`; }
