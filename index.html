@@ -568,6 +568,39 @@ button, .mb, .mb-it { touch-action: manipulation; }
 .mi.mip { display: inline-flex; align-items: center; gap: 3px; padding: 1px 6px 1px 1px; }
 .mi-p { display: inline-block; width: 20px; height: 20px; border-radius: 50%; background-size: cover; background-position: center 20%; border: 1.5px solid var(--tc, #888); background-color: #13324a; }
 .mi-n { display: inline-grid; place-items: center; width: 13px; height: 13px; border-radius: 50%; background: #3ecf8e; color: #0b1620; font-size: 9px; font-weight: 800; }
+
+/* ===== 조합 광장 ===== */
+#gal[hidden] { display: none; }
+#gal:not([hidden]) { display: flex; flex-direction: column; position: absolute; z-index: 6; left: 0; right: 0; top: 0; bottom: var(--barH, 0px);
+  background: linear-gradient(90deg, #3d6b2a 0 6%, #c9b07a 6% 8%, #4f8a34 8% 92%, #c9b07a 92% 94%, #3d6b2a 94%); }
+body.m #gal:not([hidden]) { top: calc(46px + env(safe-area-inset-top, 0px)); }
+.gal-head { display: flex; align-items: center; gap: 8px; padding: 6px 10px; background: rgba(6,16,24,0.92); border-bottom: 3px solid #6a7480; }
+.gal-head b { font-size: 14px; } .gal-head small { flex: 1; color: var(--muted); font-size: 10.5px; }
+.gal-head button { padding: 4px 10px; }
+.gal-body { flex: 1; overflow-y: auto; padding: 4px 6px 16px; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; touch-action: pan-y; }
+.gal-sec { position: sticky; top: -4px; z-index: 1; text-align: center; margin: 8px 0 4px; }
+.gal-sec span { display: inline-block; padding: 2px 14px; border-radius: 99px; background: rgba(6,16,24,0.85); color: var(--tc); font-family: var(--display); font-size: 16px; text-shadow: 0 0 8px color-mix(in srgb, var(--tc) 60%, transparent); border: 1px solid var(--tc); }
+.gal-row { display: flex; align-items: flex-end; justify-content: center; gap: 2px; padding: 2px 0; border-bottom: 1px dashed rgba(0,0,0,0.18); }
+.gal-ings { display: flex; gap: 2px; }
+.gal-ar { color: #fff6c0; font-size: 16px; padding: 0 2px 18px; text-shadow: 0 1px 2px #000; }
+.gal-u { position: relative; display: flex; flex-direction: column; align-items: center; width: 56px; padding: 0; border: 0; background: none; }
+.gal-u img { width: 52px; height: 68px; object-fit: contain; position: relative; z-index: 1; filter: saturate(0.85) brightness(0.9); }
+.gal-u::before { content: ''; position: absolute; left: 8px; right: 8px; top: 52px; height: 13px; border-radius: 50%; background: rgba(0,0,0,0.3); border: 2px solid color-mix(in srgb, var(--tc) 60%, transparent); }
+.gal-u small { font-size: 8.5px; line-height: 1.1; color: #fff; text-shadow: 0 1px 2px #000, 0 0 3px #000; text-align: center; word-break: keep-all; margin-top: 1px; }
+.gal-u.own img, .gal-u.res.ok img, .gal-u.res.chain img { filter: none; }
+.gal-u.own::before { background: radial-gradient(#7ffcff, #18c8d8 60%, transparent 75%); border-color: #7ffcff; box-shadow: 0 0 14px 4px rgba(90,240,255,0.75); }
+.gal-u.can::before { border-style: dashed; border-color: #7ffcff; }
+.gal-u.res { width: 64px; }
+.gal-u.res img { width: 60px; height: 76px; }
+.gal-u.res::before { top: 58px; }
+.gal-u.res.ok::before { background: radial-gradient(#fff2a0, #f4bf3c 60%, transparent 75%); border-color: #ffe08a; box-shadow: 0 0 16px 5px rgba(244,191,60,0.8); }
+.gal-u.res.chain::before { background: radial-gradient(#b8ffd8, #3ecf8e 60%, transparent 75%); border-color: #3ecf8e; box-shadow: 0 0 14px 4px rgba(62,207,142,0.7); }
+.mhud .mh-gal { font-size: 15px; }
+body:not(.m) .mh-gal { display: none; }
+.galbtn { width: 100%; margin-top: 6px; padding: 8px; font-weight: 800; }
+
+.gal-body { display: grid; grid-template-columns: repeat(auto-fill, minmax(330px, 1fr)); align-content: start; column-gap: 10px; }
+.gal-sec { grid-column: 1 / -1; }
 </style>
 </head><body>
 <script>
@@ -595,12 +628,13 @@ button, .mb, .mb-it { touch-action: manipulation; }
       <canvas id="gl" aria-hidden="true"></canvas><canvas id="cv" width="720" height="480" aria-label="게임 화면"></canvas>
       <div class="mhud" id="mhud" hidden>
         <div class="mh-stats"><span>W<b id="mWave">1</b><i>/40</i></span><span>⏱<b id="mTime">30</b></span><span class="g">💰<b id="mGold">100</b></span><span>🪵<b id="mWood">0</b></span><span id="mMonBox">👾<b id="mMon">0/70</b></span></div>
-        <button id="mFs" aria-label="전체 화면">⛶</button><button id="mMenu" aria-label="메뉴 (조합표·스토리·보급)">☰</button>
+        <button data-a="gal" class="mh-gal" aria-label="조합 광장">🏛</button><button id="mFs" aria-label="전체 화면">⛶</button><button id="mMenu" aria-label="메뉴 (조합표·스토리·보급)">☰</button>
       </div>
       <div class="mlog" id="mlog"></div>
       <div class="mcard" id="mcard" hidden></div>
       <div class="mrecp" id="mrec" hidden></div>
       <div class="mstat" id="mstat" hidden></div>
+      <div class="gal" id="gal" hidden><div class="gal-head"><b>🏛 조합 광장</b><small>내 선원은 빛나요 · 결과 선원을 누르면 조합식</small><button data-a="galx" aria-label="닫기">✕</button></div><div class="gal-body" id="galBody"></div></div>
       <div class="mbpop" id="mbPop" hidden></div>
       <div class="mbar" id="mbar" hidden><button class="mb-arr l" data-a="barscroll" data-d="-1" aria-label="왼쪽으로">◀</button><div class="mb-list" id="mbList"></div><button class="mb-arr r" data-a="barscroll" data-d="1" aria-label="오른쪽으로">▶</button></div>
       <div class="wpick" id="wpick" hidden><div class="wp-card"><div class="wp-head"><b>흔함 위습 · 원하는 선원 고르기</b><button data-a="wpclose" aria-label="닫기">✕</button></div><div class="wp-list"></div></div></div>
@@ -688,6 +722,7 @@ button, .mb, .mb-it { touch-action: manipulation; }
 
     <section class="box">
       <div class="bsel"><button id="selUpgrade" title="강화소 선택 (F2) · 갑판의 강화소 건물을 눌러도 됨"><span>강화소</span><kbd>F2</kbd></button><button id="selGold" title="골드 도박장 선택 (F3)"><span>💰골드 도박</span><kbd>F3</kbd></button><button id="selUnitG" title="유닛 도박장 선택 (F4)"><span>🎲유닛 도박</span><kbd>F4</kbd></button></div>
+      <button class="galbtn" data-a="gal" title="조합 광장 열기 (G)">🏛 조합 광장 <kbd>G</kbd></button>
       <div class="bhint">갑판의 건물을 눌러 선원을 부르고 강화하세요 · <span id="upSum">하급 Lv 0 · 상급 Lv 0</span></div>
       <div class="cmd" id="cmdCard" aria-label="명령"></div>
       <div class="row3">
@@ -3862,6 +3897,9 @@ window.RENDER = window.RENDER2D;
     else if (a === 'barx') { barSel = null; barSig = ''; barT = 0; document.getElementById('mbPop').hidden = true; }
     else if (a === 'altar') { const st = RD.STATIONS[ME].wisp, g = GEO[ME]; const at = { x: st.x, y: st.y + (g.cy > st.y ? 46 : -46) }; useWisp(+b.dataset.t, at, b.dataset.type || null); selectStation('wisp'); updateHud(); }
     else if (a === 'barscroll') { const L = document.getElementById('mbList'); L.scrollBy({ left: +b.dataset.d * L.clientWidth * 0.8, behavior: 'smooth' }); }
+    else if (a === 'gal') { const g = document.getElementById('gal'); g.hidden = !g.hidden; galSig = ''; renderGal(true); }
+    else if (a === 'galx') { document.getElementById('gal').hidden = true; }
+    else if (a === 'galres') { const id = b.dataset.id; barSel = id; barSig = ''; barT = 0; barPop(id); }
     else if (a === 'recfold') { const rp = document.getElementById('mrec'); rp.classList.toggle('fold'); try { localStorage.setItem('rd_recfold', rp.classList.contains('fold') ? '1' : ''); } catch (e) {} }
     else if (a === 'wpclose') { document.getElementById('wpick').hidden = true; }
     else if (a === 'mclear') { selB = null; selIds = []; selMon = null; }
@@ -3905,6 +3943,7 @@ window.RENDER = window.RENDER2D;
       case 'F2': e.preventDefault(); stationKey('upgrade'); break;
       case 'F3': e.preventDefault(); stationKey('ggold'); break;
       case 'F5': e.preventDefault(); stationKey('wisp'); break;
+      case 'KeyG': { const g = document.getElementById('gal'); if (g && started) { g.hidden = !g.hidden; galSig = ''; renderGal(true); } break; }
       case 'KeyR': if (selB === 'upgrade') { doUpgrade(3); break; } if (act({ type: 'draw' })) { selNew(); updateHud(); } break;
       case 'KeyT': if (selB === 'upgrade') doUpgrade(4); break;
       case 'KeyC': if (primary()) document.querySelector('button[data-a="combine"]')?.click(); break;
@@ -4909,7 +4948,7 @@ window.RENDER = window.RENDER2D;
     }
     const mon = selMon != null ? enemyById(selMon) : null;
     const wisps = pl.wisps.map((n, t) => n ? mb('wisp', TIERS[t].name + ' 위습', '×' + n, { attrs: ` data-t="${t}"`, hot: true, off: !play }) : '').filter(Boolean).slice(0, 3).join('');
-    return `<div class="mc-h">${mon ? (mon.kind === 'story' ? STORIES[mon.idx].name : mon.boss ? '보스' : '몬스터') + ` · 체력 ${fmt(Math.max(0, Math.ceil(mon.hp)))}` : '건물 · 보급'}</div><div class="mc-g">${mb('selb', '강화소', '', { attrs: ' data-k="upgrade"' })}${mb('selb', '💰골드 도박', '', { attrs: ' data-k="ggold"' })}${mb('selb', '🎲유닛 도박', '', { attrs: ' data-k="gunit"' })}${mb('selb', '✨위습 제단', '×' + pl.wisps.reduce((a, b) => a + b, 0), { attrs: ' data-k="wisp"', hot: pl.wisps.some(n => n > 0) })}${pl.draws ? mb('draw', '랜덤 뽑기', '×' + pl.draws, { hot: true }) : ''}${mb('mview', '내 라인', '', { attrs: ' data-v="lane"' })}${mb('mview', '스토리존', '', { attrs: ' data-v="story"' })}</div>`;
+    return `<div class="mc-h">${mon ? (mon.kind === 'story' ? STORIES[mon.idx].name : mon.boss ? '보스' : '몬스터') + ` · 체력 ${fmt(Math.max(0, Math.ceil(mon.hp)))}` : '건물 · 보급'}</div><div class="mc-g">${mb('selb', '강화소', '', { attrs: ' data-k="upgrade"' })}${mb('selb', '💰골드 도박', '', { attrs: ' data-k="ggold"' })}${mb('selb', '🎲유닛 도박', '', { attrs: ' data-k="gunit"' })}${mb('selb', '✨위습 제단', '×' + pl.wisps.reduce((a, b) => a + b, 0), { attrs: ' data-k="wisp"', hot: pl.wisps.some(n => n > 0) })}${pl.draws ? mb('draw', '랜덤 뽑기', '×' + pl.draws, { hot: true }) : ''}${mb('gal', '🏛조합 광장', '')}${mb('mview', '내 라인', '', { attrs: ' data-v="lane"' })}${mb('mview', '스토리존', '', { attrs: ' data-v="story"' })}</div>`;
   }
   // ---- 맨 아래 조합 막대 (원랜디처럼): 등급 낮은 것부터 왼쪽에, 지금 가진 재료 수 표시 ----
   const tRank = (t) => t === 4 ? 3 : t === 3 ? 4 : t; // 히든은 전설보다 살짝 아래라 전설 앞에 둠
@@ -4969,6 +5008,31 @@ window.RENDER = window.RENDER2D;
     if (pp.dataset.sig !== h) { pp.innerHTML = h; pp.dataset.sig = h; }
     pp.hidden = false;
   }
+  // ---- 조합 광장: 원랜디 맵의 조합식 구역처럼, 재료 선원들이 줄지어 서 있고 결과 선원이 끝에 섬 ----
+  const figCache = {};
+  function figImg(type) {
+    if (figCache[type]) return figCache[type];
+    if (!window.FIG2D) return '';
+    const D = window.DESIGNS[type] || {}, ship = !!D.ship, W = ship ? 96 : 64, H = 84;
+    const cv = document.createElement('canvas'); cv.width = W; cv.height = H; const c = cv.getContext('2d');
+    c.translate(W / 2, H - 8); c.scale(ship ? 1.25 : 1.75, ship ? 1.25 : 1.75);
+    try { FIG2D.draw(c, type, { t: 0.6, la: 0.2, atk: 9 }); } catch (e) {}
+    return (figCache[type] = cv.toDataURL());
+  }
+  let galSig = '', galT = 0;
+  const galOpen = () => { const g = document.getElementById('gal'); return g && !g.hidden; };
+  function renderGal(force) {
+    const g = document.getElementById('gal'); if (!g || g.hidden || !S) return;
+    const now = performance.now(); if (!force && now - galT < 500) return; galT = now;
+    const inv = invOf(); let html = '', last = -1;
+    for (const id of BAR_IDS) {
+      const d = UNITS[id], T = TIERS[d.tier], b = barInfo(id, inv);
+      if (tRank(d.tier) !== last) { last = tRank(d.tier); html += `<div class="gal-sec" style="--tc:${T.color}"><span>${T.name} 조합</span></div>`; }
+      const ings = RECIPES[id].map((t, k) => `<div class="gal-u${b.have[k] ? ' own' : b.can[k] ? ' can' : ''}" style="--tc:${TIERS[UNITS[t].tier].color}"><img src="${figImg(t)}" alt=""><small>${UNITS[t].name}</small></div>`).join('');
+      html += `<div class="gal-row"><div class="gal-ings">${ings}</div><span class="gal-ar">➜</span><button class="gal-u res${b.ok ? ' ok' : b.chain ? ' chain' : ''}" data-a="galres" data-id="${id}" style="--tc:${T.color}"><img src="${figImg(id)}" alt=""><small>${d.name}</small></button></div>`;
+    }
+    if (html !== galSig) { const B = document.getElementById('galBody'), st = B.scrollTop; B.innerHTML = html; B.scrollTop = st; galSig = html; }
+  }
   function mHud() {
     if (!S) return;
     const pl = me(), boss = RD.waveInfo(S.wave).kind === 'boss';
@@ -4991,7 +5055,7 @@ window.RENDER = window.RENDER2D;
       card.hidden = base || !card.innerHTML.trim();
       const rp = document.getElementById('mrec'); if (rp) rp.hidden = base || !rp.dataset.has || document.body.classList.contains('m-menu');
       const sp = document.getElementById('mstat'); if (sp) sp.hidden = base || !sp.dataset.has;
-      mBar(base);
+      mBar(base); if (base) { const g = document.getElementById('gal'); if (g) g.hidden = true; } else renderGal();
     }
     const hud = document.getElementById('mhud'); if (hud) hud.hidden = !started;
     const lg = document.getElementById('mlog'); if (lg) lg.classList.toggle('show', performance.now() < mlogT);
