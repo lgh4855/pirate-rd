@@ -2237,7 +2237,8 @@ window.RENDER2D = (() => {
   function clampView(v) {
     const hw = VW / 2 / v.z, hh = VH / 2 / v.z;
     v.x = hw * 2 >= WORLD.w ? WORLD.w / 2 : Math.max(hw, Math.min(WORLD.w - hw, v.x));
-    v.y = hh * 2 >= WORLD.h ? WORLD.h / 2 : Math.max(hh, Math.min(WORLD.h - hh, v.y));
+    const WH = window.RDGAL ? window.RDGAL.y1 + 30 : WORLD.h; // 맨 아래 조합 광장까지 내려갈 수 있음
+    v.y = hh * 2 >= WH ? WH / 2 : Math.max(hh, Math.min(WH - hh, v.y));
   }
   function monColor(kind, wave) {
     if (kind === 'armored') return '#9aa6b2';
@@ -2514,6 +2515,16 @@ window.RENDER2D = (() => {
     if (pu > 0 && !G.reduced) { ctx.globalCompositeOperation = 'lighter'; ctx.fillStyle = gold ? `rgba(255,220,120,${pu * 0.6})` : `rgba(214,184,255,${pu * 0.6})`; ctx.beginPath(); ctx.arc(0, -20, 26 + (1 - pu) * 26, 0, 7); ctx.fill(); ctx.globalCompositeOperation = 'source-over'; }
     ctx.restore();
   }
+  // 맨 아래 조합 광장 바닥 (원랜디 조합 구역처럼 잔디밭 + 돌담)
+  function drawGalFloor() {
+    const R = window.RDGAL; if (!R) return;
+    const { x0, x1, y0, y1 } = R;
+    ctx.fillStyle = '#c9b07a'; ctx.fillRect(x0 - 24, y0 - 24, x1 - x0 + 48, y1 - y0 + 48);
+    ctx.fillStyle = '#4f8a34'; ctx.fillRect(x0, y0, x1 - x0, y1 - y0);
+    ctx.fillStyle = 'rgba(0,0,0,0.06)'; for (let y = y0; y < y1; y += 40) ctx.fillRect(x0, y, x1 - x0, 20);
+    ctx.fillStyle = '#6a7480'; for (const x of [x0 - 30, x1 + 18]) { ctx.fillRect(x, y0 - 30, 12, y1 - y0 + 60); for (let y = y0 - 30; y < y1 + 30; y += 40) { ctx.fillStyle = '#8a949e'; ctx.fillRect(x - 3, y, 18, 10); ctx.fillStyle = '#6a7480'; } }
+    for (const c of R.cols) { ctx.strokeStyle = 'rgba(0,0,0,0.12)'; ctx.setLineDash([6, 6]); ctx.beginPath(); ctx.moveTo(c, y0 + 10); ctx.lineTo(c, y1 - 10); ctx.stroke(); ctx.setLineDash([]); }
+  }
   function stationItems(items, vis) {
     G.S.players.forEach((P, p) => {
       const st = RD.STATIONS[p];
@@ -2604,7 +2615,7 @@ window.RENDER2D = (() => {
     const hop = a.cast < 0.45 ? Math.sin(a.cast / 0.45 * Math.PI) * 12 : 0;
     const face = u.moving ? u.face : (Math.cos(a.ang) < 0 ? -1 : 1);
     const la = u.moving ? 0.6 : Math.atan2(Math.sin(a.ang), Math.abs(Math.cos(a.ang)));
-    const flying = d.move === 'fly', swimming = d.move === 'swim' && !RD.zoneAt(u.owner, u.x, u.y) && !(u.x > RD.ISLAND.x0 && u.x < RD.ISLAND.x1);
+    const flying = d.move === 'fly' && !u.statue, swimming = !u.statue && d.move === 'swim' && !RD.zoneAt(u.owner, u.x, u.y) && !(u.x > RD.ISLAND.x0 && u.x < RD.ISLAND.x1);
     const lift = flying ? 13 + Math.sin(clock * 4 + u.id) * 2.5 : 0;
     const bx = u.x + ox, by = u.y + 16 + oy + bob - hop - lift + (swimming ? 5 : 0);
 
@@ -2624,7 +2635,8 @@ window.RENDER2D = (() => {
     if (swimming) { ctx.fillStyle = 'rgba(40,120,200,0.8)'; ctx.beginPath(); ctx.ellipse(0, -2, 15, 6, 0, 0, 7); ctx.fill(); }
     ctx.restore();
 
-    // 등급 글자 · 상태 표시
+    // 등급 글자 · 상태 표시 (조합 광장 동상은 생략)
+    if (u.statue) return;
     const ly = u.y - 26 - lift;
     ctx.fillStyle = tc; ctx.beginPath(); ctx.arc(u.x - 17, ly, 7, 0, 7); ctx.fill(); ctx.lineWidth = 1.5; ctx.strokeStyle = ink; ctx.stroke();
     ctx.fillStyle = ink; ctx.font = `9px ${G.DF}`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(d.glyph, u.x - 17, ly + 0.5);
@@ -2751,7 +2763,7 @@ window.RENDER2D = (() => {
     const v = g.view, dpr = g.dpr;
     let sx = 0, sy = 0; if (g.shake > 0) { const m = g.shake * 14; sx = (Math.random() - .5) * m; sy = (Math.random() - .5) * m; }
     ctx.setTransform(dpr * v.z, 0, 0, dpr * v.z, dpr * (VW / 2 - v.x * v.z + sx), dpr * (VH / 2 - v.y * v.z + sy));
-    drawSea(v); drawIsland();
+    drawSea(v); drawIsland(); drawGalFloor();
     for (let i = 0; i < 4; i++) drawLane(i);
     drawPads();
     drawSelection();
@@ -2765,6 +2777,7 @@ window.RENDER2D = (() => {
     let nv = 0; for (const u of g.S.units) if (vis(u.x, u.y)) nv++;
     G._lite = nv > 70;
     for (const u of g.S.units) if (vis(u.x, u.y)) items.push([u.y + 16, () => drawUnit(u)]);
+    if (window.RDGAL) for (const u of window.RDGAL.statues) if (vis(u.x, u.y)) items.push([u.y + 16, () => drawUnit(u)]);
     for (const m of g.S.monsters) if (vis(m.x, m.y)) items.push([m.y + 8, () => drawMon(m)]);
     items.sort((a, b) => a[0] - b[0]);
     drawWisps();
@@ -3060,6 +3073,8 @@ window.RENDER = window.RENDER2D;
     const sp = { x: d.sx1, y: d.sy1 };
     const ws = wispAtScreen(sp);
     if (ws && !d.shift) { useWisp(ws.tier, ws); updateHud(); return; }
+    const gi = galleryAtScreen(sp);
+    if (gi) { barSel = gi.rid; barSig = ''; barT = 0; barPop(gi.rid); updateHud(); return; }
     const u = unitAtScreen(sp);
     const now = performance.now();
     if (u) {
@@ -3139,7 +3154,7 @@ window.RENDER = window.RENDER2D;
     else if (a === 'barx') { barSel = null; barSig = ''; barT = 0; document.getElementById('mbPop').hidden = true; }
     else if (a === 'altar') { const st = RD.STATIONS[ME].wisp, g = GEO[ME]; const at = { x: st.x, y: st.y + (g.cy > st.y ? 46 : -46) }; useWisp(+b.dataset.t, at, b.dataset.type || null); selectStation('wisp'); updateHud(); }
     else if (a === 'barscroll') { const L = document.getElementById('mbList'); L.scrollBy({ left: +b.dataset.d * L.clientWidth * 0.8, behavior: 'smooth' }); }
-    else if (a === 'gal') { const g = document.getElementById('gal'); g.hidden = !g.hidden; galSig = ''; renderGal(true); }
+    else if (a === 'gal') { if (view.y > WORLD.h - 100) myLaneView(); else { if (!MOBILE) zoomAt(0.62); lookAt((GAL.x0 + GAL.x1) / 2, GAL.y0 + 320); } }
     else if (a === 'galx') { document.getElementById('gal').hidden = true; }
     else if (a === 'galres') { const id = b.dataset.id; barSel = id; barSig = ''; barT = 0; barPop(id); }
     else if (a === 'recfold') { const rp = document.getElementById('mrec'); rp.classList.toggle('fold'); try { localStorage.setItem('rd_recfold', rp.classList.contains('fold') ? '1' : ''); } catch (e) {} }
@@ -3185,7 +3200,7 @@ window.RENDER = window.RENDER2D;
       case 'F2': e.preventDefault(); stationKey('upgrade'); break;
       case 'F3': e.preventDefault(); stationKey('ggold'); break;
       case 'F5': e.preventDefault(); stationKey('wisp'); break;
-      case 'KeyG': { const g = document.getElementById('gal'); if (g && started) { g.hidden = !g.hidden; galSig = ''; renderGal(true); } break; }
+      case 'KeyG': if (started) { if (view.y > WORLD.h - 100) myLaneView(); else { if (!MOBILE) zoomAt(0.62); lookAt((GAL.x0 + GAL.x1) / 2, GAL.y0 + 320); } } break;
       case 'KeyR': if (selB === 'upgrade') { doUpgrade(3); break; } if (act({ type: 'draw' })) { selNew(); updateHud(); } break;
       case 'KeyT': if (selB === 'upgrade') doUpgrade(4); break;
       case 'KeyC': if (primary()) document.querySelector('button[data-a="combine"]')?.click(); break;
@@ -3698,6 +3713,7 @@ window.RENDER = window.RENDER2D;
     const tset = new Set(); for (const u of sel()) if (u.order === 'attack' && u.tgt != null) tset.add(u.tgt);
     for (const id of tset) { const o = enemyById(id); if (o) { ring2(o, '#ff4f4f', 2.5); const p = toScreen(o.x, o.y, o.kind === 'story' ? 160 : o.boss ? 60 : 34); ctx.fillStyle = '#ff4f4f'; ctx.beginPath(); ctx.moveTo(p.x, p.y + 6); ctx.lineTo(p.x - 6, p.y - 4); ctx.lineTo(p.x + 6, p.y - 4); ctx.closePath(); ctx.fill(); } }
     if (selMon != null) { const o = enemyById(selMon); if (o) ring2(o, '#f4bf3c', 2, [5, 4]); }
+    drawGallery();
     if (barSel && RECIPES[barSel]) { // 맨 아래 조합 막대에서 고른 선원: 필요한 재료 선원을 맵에서 초록 원으로 표시
       const used = new Set(), mine = S.units.filter(u => u.owner === ME);
       RECIPES[barSel].forEach((t, k) => {
@@ -4195,6 +4211,61 @@ window.RENDER = window.RENDER2D;
   // ---- 맨 아래 조합 막대 (원랜디처럼): 등급 낮은 것부터 왼쪽에, 지금 가진 재료 수 표시 ----
   const tRank = (t) => t === 5 ? 4 : t === 4 ? 5 : t; // 히든은 전설보다 살짝 아래라 전설 앞에 둠
   const BAR_IDS = Object.keys(RECIPES).sort((a, b) => tRank(UNITS[a].tier) - tRank(UNITS[b].tier) || (UNITS[a].ship ? 1 : 0) - (UNITS[b].ship ? 1 : 0) || RECIPES[a].length - RECIPES[b].length);
+  // ---- 맵 맨 아래 조합 광장: 원랜디처럼 재료 선원 동상이 줄지어 서 있고 끝에 결과 선원 ----
+  const GAL = (() => {
+    const narrow = window.matchMedia('(max-width: 820px), (pointer: coarse) and (max-height: 520px)').matches; // 휴대폰은 한 줄씩, PC는 세 줄씩
+    const x0 = narrow ? 560 : 40, x1 = narrow ? 1000 : WORLD.w - 40, y0 = WORLD.h + 70, NC = narrow ? 1 : 3, colW = (x1 - x0) / NC, SP = 62, RH = 92, TH = 56;
+    const statues = [], items = [], titles = [], cols = NC > 1 ? [x0 + colW, x0 + colW * 2] : [];
+    let y = y0 + 10, last = -1, c = 0, n = 0;
+    const order = BAR_IDS.slice();
+    for (const id of order) {
+      const r = tRank(UNITS[id].tier);
+      if (r !== last) { if (c) { y += RH; c = 0; } last = r; titles.push({ x: (x0 + x1) / 2, y: y + 22, text: `${TIERS[UNITS[id].tier].name} 조합`, color: TIERS[UNITS[id].tier].color }); y += TH; }
+      const R = RECIPES[id], wGroup = R.length * SP + 30 + 56, cx0 = x0 + c * colW + (colW - wGroup) / 2, fy = y + 62;
+      R.forEach((t, k) => { const u = { id: -(20000 + n++), type: t, owner: 0, x: cx0 + k * SP + SP / 2, y: fy, tx: 0, ty: 0, order: 'idle', moving: false, face: 1, statue: true }; statues.push(u); items.push({ u, rid: id, k, res: false }); });
+      const ru = { id: -(20000 + n++), type: id, owner: 0, x: cx0 + R.length * SP + 30 + 28, y: fy, tx: 0, ty: 0, order: 'idle', moving: false, face: 1, statue: true };
+      statues.push(ru); items.push({ u: ru, rid: id, res: true, ax: cx0 + R.length * SP + 12 });
+      if (++c >= NC) { c = 0; y += RH; }
+    }
+    if (c) y += RH;
+    return { x0, x1, y0, y1: y + 20, statues, items, titles, cols };
+  })();
+  window.RDGAL = GAL;
+  let galStat = {}, galStatT = 0;
+  function galStatus() {
+    const now = performance.now(); if (now - galStatT < 500) return galStat; galStatT = now;
+    const inv = invOf(), st = {}; for (const id of BAR_IDS) st[id] = barInfo(id, inv); return (galStat = st);
+  }
+  function drawGallery() { // 동상 위에 이름·빛나는 발판·화살표·구역 제목 (2D·3D 공통 오버레이)
+    if (!S || view.y < WORLD.h - 300) return;
+    for (const u of GAL.statues) u.owner = ME;
+    const st = galStatus(), z = view.z;
+    ctx.save(); ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.lineJoin = 'round';
+    for (const t of GAL.titles) { const p = toScreen(t.x, t.y, 0); if (p.y < -40 || p.y > VH + 40) continue; ctx.font = `${Math.round(22 * z)}px ${DF}`; ctx.lineWidth = 4; ctx.strokeStyle = 'rgba(6,16,24,0.85)'; ctx.strokeText(t.text, p.x, p.y); ctx.fillStyle = t.color; ctx.fillText(t.text, p.x, p.y); }
+    for (const it of GAL.items) {
+      const u = it.u, p = toScreen(u.x, u.y, 0); if (p.x < -60 || p.x > VW + 60 || p.y < -80 || p.y > VH + 60) continue;
+      const b = st[it.rid]; if (!b) continue;
+      let glow = null;
+      if (it.res) glow = b.ok ? '#f4bf3c' : b.chain ? '#3ecf8e' : null; else glow = b.have[it.k] ? '#5ff0ff' : b.can[it.k] ? 'dash' : null;
+      if (glow) {
+        const gr = pickRadius(u) * 1.25;
+        ctx.save(); ctx.translate(p.x, p.y); ctx.scale(1, 0.45);
+        if (glow === 'dash') { ctx.setLineDash([4, 3]); ctx.strokeStyle = '#7ffcff'; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.arc(0, 0, gr * 0.8, 0, 7); ctx.stroke(); }
+        else { const g = ctx.createRadialGradient(0, 0, 2, 0, 0, gr); g.addColorStop(0, glow); g.addColorStop(0.55, glow); g.addColorStop(1, 'rgba(0,0,0,0)'); ctx.globalAlpha = 0.55 + Math.sin(clock * 4) * 0.15; ctx.fillStyle = g; ctx.beginPath(); ctx.arc(0, 0, gr, 0, 7); ctx.fill(); }
+        ctx.restore();
+      }
+      ctx.font = `700 ${Math.max(8, Math.round(9 * z))}px sans-serif`; ctx.lineWidth = 3; ctx.strokeStyle = 'rgba(0,0,0,0.8)';
+      const nm = UNITS[u.type].name; ctx.strokeText(nm, p.x, p.y + 12 * z); ctx.fillStyle = it.res ? TIERS[UNITS[u.type].tier].color : '#fff'; ctx.fillText(nm, p.x, p.y + 12 * z);
+      if (it.res) { const a = toScreen(it.ax, u.y - 14, 0); ctx.font = `800 ${Math.round(16 * z)}px sans-serif`; ctx.fillStyle = '#fff6c0'; ctx.strokeText('➜', a.x, a.y); ctx.fillText('➜', a.x, a.y); }
+    }
+    ctx.restore();
+  }
+  function galleryAtScreen(sp) {
+    if (!S || view.y < WORLD.h - 300) return null;
+    let best = null, bd = Infinity;
+    for (const it of GAL.items) { const p = toScreen(it.u.x, it.u.y, 14), r = pickRadius(it.u); const dd = (p.x - sp.x) ** 2 + (p.y - sp.y) ** 2; if (dd < r * r * 1.4 && dd < bd) { bd = dd; best = it; } }
+    return best;
+  }
   let barSig = '', barT = 0, barSel = null;
   { // PC: 마우스 휠·끌기로 조합 막대 좌우 스크롤 (불멸·초월까지 보기)
     const L = document.getElementById('mbList');
@@ -4314,7 +4385,7 @@ window.RENDER = window.RENDER2D;
         if (!recTouch) mcardSig = h;
       }
       const base = !started || !$('ov').hidden;
-      card.hidden = base || !card.innerHTML.trim();
+      card.hidden = base || !card.innerHTML.trim() || (view.y > WORLD.h && !selB && !selIds.length && selMon == null);
       const rp = document.getElementById('mrec'); if (rp) rp.hidden = base || !rp.dataset.has || document.body.classList.contains('m-menu');
       const sp = document.getElementById('mstat'); if (sp) sp.hidden = base || !sp.dataset.has;
       mBar(base); if (base) { const g = document.getElementById('gal'); if (g) g.hidden = true; } else renderGal();
