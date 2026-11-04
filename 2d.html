@@ -619,6 +619,8 @@ body.m #gal:not([hidden]) { top: calc(46px + env(safe-area-inset-top, 0px)); }
 .gal-u.res.ok::before { background: radial-gradient(#fff2a0, #f4bf3c 60%, transparent 75%); border-color: #ffe08a; box-shadow: 0 0 16px 5px rgba(244,191,60,0.8); }
 .gal-u.res.chain::before { background: radial-gradient(#b8ffd8, #3ecf8e 60%, transparent 75%); border-color: #3ecf8e; box-shadow: 0 0 14px 4px rgba(62,207,142,0.7); }
 .mhud .mh-gal { font-size: 15px; }
+.mhud .mh-arr { font-size: 12px; font-weight: 700; }
+body:not(.m) .mh-arr { display: none; }
 body:not(.m) .mh-gal { display: none; }
 .galbtn { width: 100%; margin-top: 6px; padding: 8px; font-weight: 800; }
 
@@ -663,7 +665,7 @@ body.m .galback:not([hidden]) { top: calc(52px + env(safe-area-inset-top, 0px));
       <canvas id="cv" width="720" height="480" aria-label="게임 화면"></canvas>
       <div class="mhud" id="mhud" hidden>
         <div class="mh-stats"><span>W<b id="mWave">1</b><i>/40</i></span><span>⏱<b id="mTime">30</b></span><span class="g">💰<b id="mGold">100</b></span><span>🪵<b id="mWood">0</b></span><span id="mMonBox">👾<b id="mMon">0/70</b></span></div>
-        <button data-a="gal" class="mh-gal" aria-label="조합 광장">🏛</button><button id="mFs" aria-label="전체 화면">⛶</button><button id="mMenu" aria-label="메뉴 (조합표·스토리·보급)">☰</button>
+        <button data-a="arrange" class="mh-arr" aria-label="선원 정렬">정렬</button><button data-a="gal" class="mh-gal" aria-label="조합 광장">🏛</button><button id="mFs" aria-label="전체 화면">⛶</button><button id="mMenu" aria-label="메뉴 (조합표·스토리·보급)">☰</button>
       </div>
       <div class="mlog" id="mlog"></div>
       <div class="mcard" id="mcard" hidden></div>
@@ -759,6 +761,7 @@ body.m .galback:not([hidden]) { top: calc(52px + env(safe-area-inset-top, 0px));
     <section class="box">
       <div class="bsel"><button id="selUpgrade" title="강화소 선택 (F2) · 갑판의 강화소 건물을 눌러도 됨"><span>강화소</span><kbd>F2</kbd></button><button id="selGold" title="골드 도박장 선택 (F3)"><span>💰골드 도박</span><kbd>F3</kbd></button><button id="selUnitG" title="유닛 도박장 선택 (F4)"><span>🎲유닛 도박</span><kbd>F4</kbd></button></div>
       <button class="galbtn" data-a="gal" title="조합 광장 열기 (G)">🏛 조합 광장 <kbd>G</kbd></button>
+      <button class="galbtn" data-a="arrange" title="갑판 위 선원을 등급·종류별로 줄 세우기 (Z)">⇅ 선원 정렬 <kbd>Z</kbd></button>
       <div class="bhint">갑판의 건물을 눌러 선원을 부르고 강화하세요 · <span id="upSum">하급 Lv 0 · 상급 Lv 0</span></div>
       <div class="cmd" id="cmdCard" aria-label="명령"></div>
       <div class="row3">
@@ -1517,6 +1520,27 @@ const RD = (() => {
         });
         s.events.push({ e: 'moveCmd', p, x: cx, y: cy, mode: a.type });
         return true;
+      }
+      case 'arrange': { // 정렬: 갑판 위 선원을 등급(높은 순)·종류별로 줄 세움
+        const D = GEO[p].deck, top = p % 2 === 0, left = p < 2, box = deckBox(p);
+        const us = s.units.filter(u => u.owner === p && inBox(box, u.x, u.y) && UNITS[u.type].move !== 'swim');
+        if (!us.length) return false;
+        us.sort((q, r) => UNITS[r.type].tier - UNITS[q.type].tier || (q.type < r.type ? -1 : q.type > r.type ? 1 : 0) || q.id - r.id);
+        const xa = left ? D.x0 + 20 : D.x0 + 52, xb = left ? D.x1 - 52 : D.x1 - 20; // 포탈 쪽은 비움
+        const ya = top ? D.y0 + 24 : D.y1 - 24, yb = top ? D.y1 - 66 : D.y0 + 66; // 건물 줄은 비움
+        const H = Math.abs(yb - ya), W = xb - xa;
+        // 등급이 높을수록 덩치가 커서 간격을 넓힘. 자리가 모자라면 전체 간격을 줄임
+        let f = 1, rowsL;
+        const build = (brk) => { const R = []; let cur = null; for (const u of us) { const t = UNITS[u.type].tier, sx = (24 + t * 3.5) * f, cap = Math.max(1, Math.floor(W / sx) + 1); if (!cur || cur.n >= cur.cap || (brk && cur.t !== t)) { cur = { t, sx, sy: (32 + t * 4) * f, cap, n: 0, us: [] }; R.push(cur); } cur.us.push(u); cur.n++; } return R; };
+        const hOf = R => R.reduce((a, r) => a + r.sy, 0) - (R.length ? R[R.length - 1].sy : 0);
+        for (;;) { rowsL = build(true); if (hOf(rowsL) <= H) break; rowsL = build(false); if (hOf(rowsL) <= H || f < 0.5) break; f -= 0.06; }
+        let y = ya;
+        for (const R of rowsL) {
+          const w = (R.us.length - 1) * R.sx, x0 = xa + Math.max(0, (W - w) / 2);
+          R.us.forEach((u, k) => { u.tx = Math.min(xb, x0 + k * R.sx); u.ty = y; u.ox = u.x; u.oy = u.y; u.order = 'move'; });
+          y += top ? R.sy : -R.sy;
+        }
+        s.events.push({ e: 'arranged', p, n: us.length }); return true;
       }
       case 'attack': { // 몬스터(또는 건물)를 지정해서 집중 공격: 사거리 밖이면 다가감
         const tg = findTarget(s, a.target); if (!tg) return false;
@@ -3211,6 +3235,7 @@ window.RENDER = window.RENDER2D;
     else if (a === 'barx') { barSel = null; barSig = ''; barT = 0; document.getElementById('mbPop').hidden = true; }
     else if (a === 'altar') { const st = RD.STATIONS[ME].wisp, g = GEO[ME]; const at = { x: st.x, y: st.y + (g.cy > st.y ? 46 : -46) }; useWisp(+b.dataset.t, at, b.dataset.type || null); selectStation('wisp'); updateHud(); }
     else if (a === 'barscroll') { const L = document.getElementById('mbList'); L.scrollBy({ left: +b.dataset.d * L.clientWidth * 0.8, behavior: 'smooth' }); }
+    else if (a === 'arrange') { if (act({ type: 'arrange' })) say('선원을 등급·종류별로 줄 세웠어요 (높은 등급이 앞줄)'); else say('정렬할 갑판 위 선원이 없어요'); }
     else if (a === 'gal') { if (view.y > WORLD.h - 100) myLaneView(); else { if (!MOBILE) zoomAt(0.62); lookAt(GAL.x0 + (MOBILE ? 250 : 420), GAL.y0 + 320); } }
     else if (a === 'galx') { document.getElementById('gal').hidden = true; }
     else if (a === 'galres') { const id = b.dataset.id; barSel = id; barSig = ''; barT = 0; barPop(id); }
@@ -3259,6 +3284,7 @@ window.RENDER = window.RENDER2D;
       case 'F3': e.preventDefault(); stationKey('ggold'); break;
       case 'F5': e.preventDefault(); stationKey('wisp'); break;
       case 'KeyG': if (started) { if (view.y > WORLD.h - 100) myLaneView(); else { if (!MOBILE) zoomAt(0.62); lookAt(GAL.x0 + (MOBILE ? 250 : 420), GAL.y0 + 320); } } break;
+      case 'KeyZ': if (started) { if (act({ type: 'arrange' })) say('선원을 등급·종류별로 줄 세웠어요 (높은 등급이 앞줄)'); } break;
       case 'KeyR': if (selB === 'upgrade') { doUpgrade(3); break; } if (act({ type: 'draw' })) { selNew(); updateHud(); } break;
       case 'KeyT': if (selB === 'upgrade') doUpgrade(4); break;
       case 'KeyC': if (primary()) document.querySelector('button[data-a="combine"]')?.click(); break;
