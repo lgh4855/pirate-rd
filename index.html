@@ -420,6 +420,15 @@ body:not(.m) #mrec:not([hidden]) { top: 8px; }
 #mrec .mrecs { margin-top: 4px; }
 .mr-title { font-size: 12px; font-weight: 800; color: var(--gold); margin: 0 2px; }
 html.rot body.m #mrec:not([hidden]) { width: min(calc(var(--rw) * 0.58), 270px); max-height: calc(var(--rh) * 0.46); }
+#mrec:empty { display: none !important; }
+.ms-mks { display: flex; flex-direction: column; gap: 5px; margin-top: 6px; }
+.ms-mk { display: flex; align-items: center; gap: 7px; width: 100%; padding: 3px 7px; border-radius: 10px; border: 2px solid var(--tc); background: rgba(255,255,255,0.06); color: #fff; text-align: left; font: inherit; cursor: pointer; animation: mkGlow 1.4s ease-in-out infinite; }
+.ms-mk .mini { width: 28px; height: 28px; font-size: 14px; flex: none; }
+.ms-mk span { display: flex; flex-direction: column; line-height: 1.15; }
+.ms-mk small { color: var(--tc); font-size: 10px; font-weight: 700; }
+.ms-mk b { font-size: 13px; white-space: nowrap; }
+.ms-mk:disabled { opacity: .5; animation: none; }
+@keyframes mkGlow { 50% { box-shadow: 0 0 10px var(--tc); } }
 
 /* 조합법 패널: 작게 */
 #mrec:not([hidden]) { width: min(44%, 196px); max-height: 32%; padding: 4px; border-radius: 9px; background: rgba(8,20,30,0.78); }
@@ -5207,8 +5216,12 @@ window.RENDER = window.RENDER2D;
         return `<div class="mrec${r.ok ? ' hot' : ''}"><div class="mr-top"><b style="color:${TT.color}">${r.dd.name}</b><small>${TT.name}</small><button data-a="recipe" data-id="${r.id}" ${r.ok && play ? '' : 'disabled'}>조합</button></div><div class="mr-ab">${tags(r.dd, 4)} <span class="mr-sk">${skillLine(r.dd)}</span></div><div class="mr-ing">${ings}${cost}</div></div>`;
       }).join('');
       const cnt = us.length > 1 ? `선택 ${us.length}명` : `${haveN}명 보유`;
+      // 이 선원이 조합식에서 가장 높은 등급 재료인 조합만, 지금 만들 수 있을 때 버튼으로 보여 줌
+      const keyOf = id => RECIPES[id].reduce((b, t) => UNITS[t].tier > UNITS[b].tier ? t : b, RECIPES[id][0]);
+      const mine = RD.usesOf(u.type).filter(id => keyOf(id) === u.type).map(id => { const dd = UNITS[id], TT = TIERS[dd.tier]; return { id, dd, TT, ok: !!RD.recipeUnits(S, ME, id, u.id) && pl.wood >= (TT.wood || 0) && pl.gold >= (TT.gold || 0) }; }).filter(r => r.ok).sort((a, b) => b.dd.tier - a.dd.tier).slice(0, 4);
+      const mk = mine.length ? `<div class="ms-mks">${mine.map(r => `<button class="ms-mk" data-a="recipe" data-id="${r.id}" style="--tc:${r.TT.color}" ${play ? '' : 'disabled'}>${badge(r.id, 'mini')}<span><small>${r.TT.name}</small><b>${r.dd.name} 조합</b></span></button>`).join('')}</div>` : '';
       const btns = `<div class="ms-btns">${mb('cmd', '홀드', '', { attrs: ' data-c="hold"', hot: us.every(o => o.order === 'hold') })}${mb('combine', '랜덤 조합', T.need && !d.excl ? `${haveN}/${T.need}` : '불가', { hot: can, off: !can || !play })}</div>`;
-      return `<div class="ms-h"><span style="color:${T.color}">${T.name}</span> ${d.name} <span class="dt ${d.dtype === 'm' ? 'm' : 'p'}">${d.dtype === 'm' ? '마뎀' : '물뎀'}</span><small class="ms-n">${cnt}</small></div>` + stat + btns + '<!--CARD--><!--REC-->' + (row3 ? `<button class="mr-title" data-a="recfold">조합법 · ${d.name}<span>▾</span></button><div class="mrecs">${row3}</div>` : `<button class="mr-title" data-a="recfold">조합법 · ${d.name}<span>▾</span></button><small class="mc-none">이 선원으로 만드는 조합식은 없어요</small>`);
+      return `<div class="ms-h"><span style="color:${T.color}">${T.name}</span> ${d.name} <span class="dt ${d.dtype === 'm' ? 'm' : 'p'}">${d.dtype === 'm' ? '마뎀' : '물뎀'}</span><small class="ms-n">${cnt}</small></div>` + stat + btns + mk + '<!--CARD--><!--REC-->';
     }
     const mon = selMon != null ? enemyById(selMon) : null;
     const wisps = pl.wisps.map((n, t) => n ? mb('wisp', TIERS[t].name + ' 위습', '×' + n, { attrs: ` data-t="${t}"`, hot: true, off: !play }) : '').filter(Boolean).slice(0, 3).join('');
@@ -5472,6 +5485,7 @@ window.RENDER = window.RENDER2D;
   window.__pick = (x, y) => ({ st: stationAtScreen({ x, y }), u: unitAtScreen({ x, y })?.type, w: wispAtScreen({ x, y })?.tier });
   window.__tse = (e) => toScreenEv(e);
   window.__view = view;
+  window.__selU = (id) => { selIds = [id]; selMon = null; mcardSig = null; };
   window.__net = () => NET;
   window.__vw = () => [VW, VH];
   window.__stress = (n = 200) => { if (!S) return; const G = GEO[ME], types = Object.keys(UNITS); for (let k = 0; k < n; k++) { const t = types[k % types.length]; S.units.push({ id: 50000 + S.nextId++, owner: ME, type: t, x: G.deck.x0 + 20 + (k * 37) % (G.deck.x1 - G.deck.x0 - 40), y: G.deck.y0 + 20 + (k * 53) % (G.deck.y1 - G.deck.y0 - 40), tx: 0, ty: 0, ox: 0, oy: 0, order: 'idle', cd: 0, rapidT: 0, rapidMul: 1, moving: false, face: 1 }); } };
