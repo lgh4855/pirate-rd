@@ -342,6 +342,7 @@ body.m .mlog { display: block; position: absolute; z-index: 6; left: 50%; transf
 body.m .mlog.show { opacity: 1; }
 .mcard:not([hidden]) { display: block; position: absolute; z-index: 5; right: 8px; bottom: 8px; width: 290px; padding: 8px; border-radius: 12px; background: rgba(8,20,30,0.9); border: 1px solid #2a5a7a; box-shadow: 0 6px 18px rgba(0,0,0,.45); }
 body.m .mcard:not([hidden]) { display: block; position: absolute; z-index: 5; right: 6px; bottom: calc(6px + env(safe-area-inset-bottom, 0px)); width: min(62vw, 300px); padding: 8px; border-radius: 12px; background: rgba(8,20,30,0.9); border: 1px solid #2a5a7a; box-shadow: 0 6px 18px rgba(0,0,0,.45); }
+.mcard:empty { display: none !important; }
 .mc-h { font-size: 12px; font-weight: 800; margin: 0 2px 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .mc-h small { color: var(--muted); font-weight: 500; }
 .mc-g { display: grid; grid-template-columns: repeat(3, 1fr); gap: 5px; }
@@ -3291,97 +3292,92 @@ window.RENDER = window.RENDER2D;
   const WGLOW = { thunderblade: '#ffe066', goldkatana: '#fff2b0', goldcutlass: '#ffd23f', trident: '#7fd8ff', icestaff: '#9fe3ff', stormstaff: '#ffe066', conchstaff: '#3ac0b0', clockstaff: '#e6d3ff', wateror: '#3ac0e8', starwand: '#fff2a0', charm: '#ff8ab0', lantern: '#3affb0', flask: '#8ee05a', bomb: '#ffb347' };
   Object.assign(WCOL, { scythe: '#c8c8d8', axe: '#b8c0c8', gauntlet: '#b8c0c8', greatsword: '#e8eef4', tome: '#4a4ac0', fan: '#ffd23f', moonstaff: '#ffe38a' });
 
-  // ---- 선원 모델 모드: '' = 지금(직접 만든 체형) / 'knight' = 기사 기본 모델 / 'chibi' = 치비 기본 모델 (Quaternius CC0) ----
+  // ---- 선원 모델 모드: '' = 지금(직접 만든 체형) / 'pirate' = 해적 키트 뼈대(Quaternius CC0) 위에 우리 모자·무기·색 ----
   const CH = (() => {
     let mode = '';
     try { mode = new URLSearchParams(location.search).get('char') || localStorage.getItem('rd_char') || ''; } catch (e) {}
-    const bases = {}, objs = new Map(), matCache = {}, _v = new THREE.Vector3(), _q = new THREE.Quaternion(), _e = new THREE.Euler();
-    const CFGM = {
-      knight: { rotY: Math.PI, idle: 'Idle', walk: 'Walking', atk: 'Run_swordAttack', head: 'Head', hand: 'PalmR', H: 1.75, hatY: 0.2, mats: { Armor: 'outfit', Boots: 'pants', Skin: 'skin' }, hide: [] },
-      chibi:  { idle: 'Idle', walk: 'Walk', atk: 'Punch', shoot: 'Idle_Shoot', head: 'Head', hand: 'FistR', H: 1.55, hatY: 0.42, mats: { Main: 'outfit', Main_Light: 'pants', Main2: 'skin', EyeColor: 'ink' }, hide: ['Ears'] },
+    const bases = {}, objs = new Map(), _v = new THREE.Vector3(), _q = new THREE.Quaternion();
+    let clips = null, mat = null;
+    // 기본 모델 색(팔레트) → 우리 디자인의 어느 색으로 바꿀지
+    const PB = {
+      Anne: { '99824b': 'hair', 'c09a77': 'skin', '403226': 'outfit', '83775f': 'outfit', '885f38': 'pants' },
+      Captain_Barbarossa: { 'c09a77': 'skin', 'a74d2a': 'hair', '403226': 'outfit', '56402a': 'outfitD', '8b1c1c': 'pants', '2a2a2a': 'hatC' },
+      Henry: { '5a4026': 'skin', '8b1c1c': 'hatC', 'c7c7c7': 'hatC2', '83775f': 'outfit', '45423b': 'outfitD', '3b5c60': 'pants' },
+      Mako: { '6e7683': 'skin', 'a79da4': 'outfit', '83775f': 'pants' },
+      Sharky: { '6380a9': 'skin', '92b2d4': 'skinL', '83775f': 'pants' },
+      Skeleton: { '885f38': 'outfit', '5c4035': 'pants', '817a7f': 'outfitD' },
     };
-    if (window.RD_GLB && THREE.GLTFLoader) {
+    const toHex = v => { v = Math.max(0, Math.min(1, v)); return Math.round(255 * (v <= 0.0031308 ? v * 12.92 : 1.055 * Math.pow(v, 1 / 2.4) - 0.055)); };
+    if (window.RD_PK && THREE.GLTFLoader) {
       const L = new THREE.GLTFLoader();
-      for (const name in window.RD_GLB) {
-        const bin = atob(window.RD_GLB[name]), buf = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) buf[i] = bin.charCodeAt(i);
-        L.parse(buf.buffer, '', (g) => { const bb = new THREE.Box3().setFromObject(g.scene); g.h = bb.max.y - bb.min.y; prep(name, g); bases[name] = g; }, () => {});
+      for (const name in window.RD_PK) {
+        const bin = atob(window.RD_PK[name]), buf = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) buf[i] = bin.charCodeAt(i);
+        L.parse(buf.buffer, '', (g) => { prep(name, g); bases[name] = g; if (g.animations.length) clips = g.animations; }, () => {});
       }
     }
-    // 최적화: 재질별로 나뉜 조각들을 하나로 합치고 색은 꼭짓점 색으로 → 선원 1명 = 그리기 1번
     function prep(name, g) {
-      const cf = CFGM[name]; if (!cf) return;
-      const parts = []; g.scene.traverse(n => { if (n.isSkinnedMesh && !cf.hide.includes(n.name) && !cf.hide.includes(n.parent && n.parent.name)) parts.push(n); });
-      if (!parts.length) return;
-      const bn = m => m.skeleton.bones.map(b => b.name).join(',');
-      if (parts.some(m => bn(m) !== bn(parts[0]))) return; // 뼈대가 다르면 합치지 않음
-      const roles = [], origCol = {}, pos = [], nor = [], si = [], sw = [], idx = []; let base = 0;
-      for (const m of parts) {
-        const G = m.geometry, A = G.attributes, n = A.position.count, mn = m.material.name; origCol[mn] = m.material.color.clone();
-        for (let i = 0; i < n; i++) { pos.push(A.position.getX(i), A.position.getY(i), A.position.getZ(i)); nor.push(A.normal.getX(i), A.normal.getY(i), A.normal.getZ(i)); si.push(A.skinIndex.getX(i), A.skinIndex.getY(i), A.skinIndex.getZ(i), A.skinIndex.getW(i)); sw.push(A.skinWeight.getX(i), A.skinWeight.getY(i), A.skinWeight.getZ(i), A.skinWeight.getW(i)); roles.push(mn); }
-        if (G.index) for (let i = 0; i < G.index.count; i++) idx.push(G.index.getX(i) + base); else for (let i = 0; i < n; i++) idx.push(i + base);
-        base += n;
-      }
-      const geo = new THREE.BufferGeometry();
-      geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); geo.setAttribute('normal', new THREE.Float32BufferAttribute(nor, 3));
-      geo.setAttribute('skinIndex', new THREE.Uint16BufferAttribute(si, 4)); geo.setAttribute('skinWeight', new THREE.Float32BufferAttribute(sw, 4)); geo.setIndex(idx);
-      const keep = parts[0]; keep.name = 'RD_BODY';
-      for (const m of parts.slice(1)) m.parent.remove(m);
-      g.scene.traverse(n => { if (n.isMesh && n !== keep) n.visible = false; });
-      keep.geometry = geo; keep.material = new THREE.MeshStandardMaterial({ skinning: true, vertexColors: true, roughness: 0.75, metalness: 0, flatShading: name === 'knight' });
-      keep.castShadow = true; keep.frustumCulled = false;
-      g.merged = { geo, roles, origCol, mat: keep.material, typed: {} };
+      let body = null; g.scene.traverse(n => { if (n.isSkinnedMesh) body = body || n; });
+      g.scene.updateMatrixWorld(true);
+      const bb = new THREE.Box3().setFromObject(g.scene); g.h = bb.max.y - bb.min.y;
+      let head = null; g.scene.traverse(n => { if (n.isBone && n.name === 'Head') head = n; });
+      g.headTop = head ? bb.max.y - head.getWorldPosition(new THREE.Vector3()).y : g.h * 0.4;
+      const C = body.geometry.attributes.color, n = C.count, keys = new Array(n), div = C.normalized ? (C.array instanceof Uint8Array ? 255 : 65535) : 1;
+      for (let i = 0; i < n; i++) keys[i] = ((toHex(C.getX(i) / div) << 16) | (toHex(C.getY(i) / div) << 8) | toHex(C.getZ(i) / div)).toString(16).padStart(6, '0');
+      if (!mat) mat = new THREE.MeshStandardMaterial({ skinning: true, vertexColors: true, flatShading: true, roughness: 0.8, metalness: 0 });
+      body.material = mat; body.castShadow = true; body.frustumCulled = false; body.name = 'RD_BODY';
+      g.keys = keys; g.typed = {};
     }
-    function geoFor(type, D) {
-      const M = bases[mode].merged; if (M.typed[type]) return M.typed[type];
-      const cf = CFGM[mode], g = new THREE.BufferGeometry(), col = new Float32Array(M.roles.length * 3), cc = {};
-      for (const k in M.geo.attributes) g.setAttribute(k, M.geo.attributes[k]); g.setIndex(M.geo.index);
-      M.roles.forEach((mn, i) => { if (!cc[mn]) { const role = cf.mats[mn], c = role === 'ink' ? '#141414' : role ? D[role] : null; cc[mn] = c ? new THREE.Color(c) : M.origCol[mn]; } const c = cc[mn]; col[i * 3] = c.r; col[i * 3 + 1] = c.g; col[i * 3 + 2] = c.b; });
-      g.setAttribute('color', new THREE.BufferAttribute(col, 3));
-      return (M.typed[type] = g);
+    const shade = (hex, f) => { const c = new THREE.Color(hex); return c.multiplyScalar(f); };
+    function geoFor(bn, type, D) {
+      const g = bases[bn]; if (g.typed[type]) return g.typed[type];
+      let body = null; g.scene.traverse(n => { if (n.isSkinnedMesh) body = body || n; });
+      const src = body.geometry, out = new THREE.BufferGeometry(), map = PB[bn] || {}, cc = {};
+      for (const k in src.attributes) if (k !== 'color') out.setAttribute(k, src.attributes[k]); out.setIndex(src.index);
+      const role = r => (r === 'hatC' || r === 'hatC2') && bn === 'Henry' && D.hat !== 'bandana' ? new THREE.Color(D.hair) : r === 'outfitD' ? shade(D.outfit, 0.62) : r === 'skinL' ? new THREE.Color(D.skin).lerp(new THREE.Color('#ffffff'), 0.35) : r === 'hatC' ? new THREE.Color(D.hatC || D.outfit) : r === 'hatC2' ? new THREE.Color(D.hatC2 || '#f0f0f0') : new THREE.Color(D[r] || '#888');
+      const col = new Float32Array(g.keys.length * 3);
+      g.keys.forEach((k, i) => { let c = cc[k]; if (!c) c = cc[k] = map[k] ? role(map[k]) : new THREE.Color('#' + k); col[i * 3] = c.r; col[i * 3 + 1] = c.g; col[i * 3 + 2] = c.b; });
+      out.setAttribute('color', new THREE.BufferAttribute(col, 3));
+      return (g.typed[type] = out);
     }
-    const ok = () => !!(mode && bases[mode] && THREE.SkeletonUtils);
-    function matFor(type, D, mname, orig) {
-      const k = mode + type + mname; if (matCache[k]) return matCache[k];
-      const role = CFGM[mode].mats[mname], m = orig.clone();
-      const c = role === 'ink' ? '#141414' : role ? D[role] : null;
-      if (c) m.color = new THREE.Color(c);
-      m.metalness = 0; m.roughness = 0.75; m.flatShading = mode === 'knight';
-      return (matCache[k] = m);
+    const human = hex => { const c = new THREE.Color(hex); return c.r >= c.g && c.g >= c.b * 0.95 && c.r > 0.35; };
+    function pickBase(D, arch) {
+      const ex = D.extras || [];
+      if (ex.includes('ghostly')) return 'Skeleton';
+      if (!human(D.skin)) return arch === 'brute' || arch === 'heavy' ? 'Mako' : 'Sharky';
+      if (D.hairStyle === 'long') return 'Anne';
+      if (D.hat === 'tricorn' || D.hat === 'raggedtricorn') return 'Captain_Barbarossa';
+      return 'Henry';
     }
-    function make(u, D) {
-      const base = bases[mode], cf = CFGM[mode], o = THREE.SkeletonUtils.clone(base.scene), r0 = { meshes: [] };
-      if (base.merged) o.traverse(n => { if (n.name === 'RD_BODY') n.geometry = geoFor(u.type, D); });
-      else o.traverse(n => {
-        if (n.isMesh) { if (cf.hide.includes(n.name) || cf.hide.includes(n.parent && n.parent.name)) n.visible = false; n.material = Array.isArray(n.material) ? n.material.map(m => matFor(u.type, D, m.name, m)) : matFor(u.type, D, n.material.name, n.material); n.castShadow = true; n.frustumCulled = false; }
-      });
-      o.traverse(n => { if (n.isMesh) r0.meshes.push(n); });
+    const ok = () => !!(mode === 'pirate' && clips && bases.Henry && THREE.SkeletonUtils);
+    function make(u, D, arch) {
+      const bn = pickBase(D, arch), base = bases[bn] || bases.Henry, o = THREE.SkeletonUtils.clone(base.scene);
+      let body = null, head = null, hand = null;
+      o.traverse(n => { if (n.name === 'RD_BODY') body = n; if (n.isBone && n.name === 'Head') head = n; if (n.isBone && n.name === 'Middle1R') hand = n; });
+      if (body) body.geometry = geoFor(bases[bn] ? bn : 'Henry', u.type, D);
       const mixer = new THREE.AnimationMixer(o), acts = {};
-      for (const c of base.animations) acts[c.name.split('|').pop()] = mixer.clipAction(c);
-      let head = null, hand = null; o.traverse(n => { if (n.isBone || n.type === 'Bone') { if (n.name === cf.head) head = n; if (n.name === cf.hand) hand = n; } });
+      for (const c of clips) acts[c.name] = mixer.clipAction(c);
       scene.add(o);
-      const r = { o, mixer, acts, cur: '', head, hand, type: u.type, seen: 0, meshes: r0.meshes, k: objs.size, sh: true };
+      const r = { o, mixer, acts, cur: '', head, hand, type: u.type, seen: 0, body, base, bn, k: objs.size, sh: true, w: Math.max(0.9, Math.min(1.35, D.build || 1)) };
       objs.set(u.id, r); return r;
     }
     function play(r, name, fade = 0.15) { if (r.cur === name || !r.acts[name]) return; const a = r.acts[name]; a.reset().fadeIn(fade).play(); if (r.cur && r.acts[r.cur]) r.acts[r.cur].fadeOut(fade); r.cur = name; }
     let frame = 0;
     return {
       get mode() { return mode; }, ok,
-      set(m) { mode = m || ''; try { localStorage.setItem('rd_char', mode); } catch (e) {} for (const r of objs.values()) { scene.remove(r.o); } objs.clear(); },
+      set(m) { mode = m || ''; try { localStorage.setItem('rd_char', mode); } catch (e) {} for (const r of objs.values()) scene.remove(r.o); objs.clear(); },
       begin() { frame++; },
-      // 한 선원을 모델로 그림. 머리·손의 실제 위치를 돌려줘서 모자·무기를 거기에 붙임
-      draw(u, D, X, Y, Z, heading, s, a, kind, dt) {
+      draw(u, D, X, Y, Z, heading, s, a, kind, dt, arch) {
         let r = objs.get(u.id); if (r && r.type !== u.type) { scene.remove(r.o); objs.delete(u.id); r = null; }
-        if (!r) r = make(u, D); r.seen = frame;
-        const cf = CFGM[mode], k = s * cf.H / bases[mode].h;
-        r.o.position.set(X, Y - 0.02, Z); r.o.rotation.set(0, heading + (cf.rotY || 0), 0); r.o.scale.setScalar(k);
-        const atkNow = a.atk < 0.35, gun = kind === 'gun' || kind === 'cannon';
-        play(r, u.moving ? cf.walk : atkNow && !u.statue ? (gun && cf.shoot ? cf.shoot : cf.atk) : cf.idle);
-        // 선원이 많으면: 그림자 끄고, 애니메이션은 절반씩 번갈아 갱신
-        const many = objs.size > 60, sh = !many; if (r.sh !== sh) { r.sh = sh; for (const m of r.meshes) m.castShadow = sh; }
+        if (!r) r = make(u, D, arch); r.seen = frame;
+        const k = s * 1.9 / r.base.h;
+        r.o.position.set(X, Y - 0.02, Z); r.o.rotation.set(0, heading, 0); r.o.scale.set(k * r.w, k, k * r.w);
+        const atkNow = a.atk < 0.35 && !u.statue;
+        play(r, u.moving ? 'Walk' : atkNow ? (kind === 'blade' || kind === 'melee' ? 'Sword' : 'Punch') : 'Idle');
+        const many = objs.size > 60, sh = !many; if (r.sh !== sh) { r.sh = sh; if (r.body) r.body.castShadow = sh; }
         if (u.statue) r.mixer.update(0); else if (!many) r.mixer.update(dt); else if ((r.k + frame) % 2 === 0) r.mixer.update(dt * 2);
         r.o.updateMatrixWorld(true);
-        const out = { head: null, hand: null };
-        if (r.head) { r.head.getWorldPosition(_v); out.head = _v.clone(); }
+        const out = { head: null, hand: null, top: 0, hs: 1.1, ownHat: (r.bn === 'Captain_Barbarossa' && /tricorn/.test(D.hat)) || (r.bn === 'Henry' && D.hat === 'bandana') };
+        if (r.head) { r.head.getWorldPosition(_v); const rel = (_v.y - Y) / k; if (r.rel0 === undefined) r.rel0 = rel; out.head = _v.clone(); out.top = Y + k * (r.base.h * 0.97 + rel - r.rel0) - 0.26 * s; }
         if (r.hand) { r.hand.getWorldPosition(_v); r.hand.getWorldQuaternion(_q); out.hand = _v.clone(); out.handQ = _q.clone(); }
         return out;
       },
@@ -3390,7 +3386,6 @@ window.RENDER = window.RENDER2D;
     };
   })();
   window.RD_CHAR = CH;
-  const CH_HATY = () => CH.mode === 'chibi' ? 0.28 : 0.22;
   Object.assign(WGLOW, { scythe: '#b8a0ff', tome: '#7a8cff', fan: '#5fd0ff', moonstaff: '#c08aff' });
   // 머리카락 · 장식
   const XTRA = {
@@ -3558,13 +3553,13 @@ window.RENDER = window.RENDER2D;
       const useM = CH.ok();
       let MH = null;
       if (useM) {
-        MH = CH.draw(u, D, X, Y, Z, heading, s, a, kind, G.rdt || 1 / 60);
+        MH = CH.draw(u, D, X, Y, Z, heading, s, a, kind, G.rdt || 1 / 60, D.arch || ({ blade: b >= 1.1 ? 'brute' : 'slim', ninja: 'slim', harpoon: 'brute', cannon: 'heavy', mage: 'robe', gun: 'coat', support: 'coat', captain: 'royal', king: 'royal' }[d.look] || 'slim'));
         // 모자: 모델 머리 위치에 붙임
-        if (MH.head && D.hat && D.hat !== 'none' && HP[D.hat]) { comp(MH.head.x, MH.head.y + CH_HATY() * s, MH.head.z, 0, heading, 0, s); HP[D.hat].push(_m, col(D.hatC || '#444')); }
+        if (MH.head && !MH.ownHat && D.hat && D.hat !== 'none' && HP[D.hat]) { comp(MH.head.x, MH.top, MH.head.z, 0, heading, 0, s * MH.hs); HP[D.hat].push(_m, col(D.hatC || '#444')); }
         // 무기: 모델 오른손에 쥐어 줌
         const wpm = WP3[D.weapon];
         if (wpm && MH.hand) { L.makeRotationFromQuaternion(MH.handQ); L.multiply(new THREE.Matrix4().makeRotationX(-Math.PI / 2)); L.setPosition(MH.hand.x, MH.hand.y, MH.hand.z); const sc = new THREE.Matrix4().makeScale(s, s, s); wpm.push(L.multiply(sc), D.weapon === 'banner' ? col(D.hatC2 || D.outfit) : (D.weapon === 'tome' || D.weapon === 'fan') ? col(D.outfit) : col(WCOL[D.weapon] || '#c8d0d8')); }
-        for (const e of D.extras) { if (e === 'halo' && MH.head) { comp(MH.head.x, MH.head.y + (CH_HATY() + 0.35) * s, MH.head.z, 0, 0, 0, s); XTRA.halo.push(_m); } else if (e === 'cape') pushL(P.cape, 0, 0.78, -0.12 * b, Math.sin(t * 3 + u.id) * 0.08 - (u.moving ? 0.25 : 0), 0, 0, b, col(D.cape || D.outfit)); }
+        for (const e of D.extras) { if (e === 'halo' && MH.head) { comp(MH.head.x, MH.top + 0.35 * s, MH.head.z, 0, 0, 0, s); XTRA.halo.push(_m); } }
       } else {
       // 체형: 칼잡이·닌자=날씬한 역삼각형, 작살·덩치 칼잡이=어깨 넓은 근육형, 포병=배 나온 거구, 마법사=긴 로브, 총잡이·지원=긴 코트, 선장·왕=왕족(넓은 가슴 + 깃 + 망토)
       const ARCH = D.arch || ({ blade: b >= 1.1 ? 'brute' : 'slim', ninja: 'slim', harpoon: 'brute', cannon: 'heavy', mage: 'robe', gun: 'coat', support: 'coat', captain: 'royal', king: 'royal' }[d.look] || 'slim');
@@ -5217,6 +5212,7 @@ window.RENDER = window.RENDER2D;
     }
     const mon = selMon != null ? enemyById(selMon) : null;
     const wisps = pl.wisps.map((n, t) => n ? mb('wisp', TIERS[t].name + ' 위습', '×' + n, { attrs: ` data-t="${t}"`, hot: true, off: !play }) : '').filter(Boolean).slice(0, 3).join('');
+    if (!mon) return pl.draws ? `<div class="mc-g">${mb('draw', '랜덤 뽑기', '×' + pl.draws, { hot: true })}</div>` : ''; // 아무것도 안 골랐을 땐 건물·보급 패널 숨김
     return `<div class="mc-h">${mon ? (mon.kind === 'story' ? STORIES[mon.idx].name : mon.boss ? '보스' : '몬스터') + ` · 체력 ${fmt(Math.max(0, Math.ceil(mon.hp)))}` : '건물 · 보급'}</div><div class="mc-g">${mb('selb', '강화소', '', { attrs: ' data-k="upgrade"' })}${mb('selb', '💰골드 도박', '', { attrs: ' data-k="ggold"' })}${mb('selb', '🎲유닛 도박', '', { attrs: ' data-k="gunit"' })}${mb('selb', '✨위습 제단', '×' + pl.wisps.reduce((a, b) => a + b, 0), { attrs: ' data-k="wisp"', hot: pl.wisps.some(n => n > 0) })}${pl.draws ? mb('draw', '랜덤 뽑기', '×' + pl.draws, { hot: true }) : ''}${mb('gal', '🏛조합 광장', '')}${mb('mview', '내 라인', '', { attrs: ' data-v="lane"' })}${mb('mview', '스토리존', '', { attrs: ' data-v="story"' })}</div>`;
   }
   // ---- 맨 아래 조합 막대 (원랜디처럼): 등급 낮은 것부터 왼쪽에, 지금 가진 재료 수 표시 ----

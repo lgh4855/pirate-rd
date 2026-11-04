@@ -342,6 +342,7 @@ body.m .mlog { display: block; position: absolute; z-index: 6; left: 50%; transf
 body.m .mlog.show { opacity: 1; }
 .mcard:not([hidden]) { display: block; position: absolute; z-index: 5; right: 8px; bottom: 8px; width: 290px; padding: 8px; border-radius: 12px; background: rgba(8,20,30,0.9); border: 1px solid #2a5a7a; box-shadow: 0 6px 18px rgba(0,0,0,.45); }
 body.m .mcard:not([hidden]) { display: block; position: absolute; z-index: 5; right: 6px; bottom: calc(6px + env(safe-area-inset-bottom, 0px)); width: min(62vw, 300px); padding: 8px; border-radius: 12px; background: rgba(8,20,30,0.9); border: 1px solid #2a5a7a; box-shadow: 0 6px 18px rgba(0,0,0,.45); }
+.mcard:empty { display: none !important; }
 .mc-h { font-size: 12px; font-weight: 800; margin: 0 2px 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .mc-h small { color: var(--muted); font-weight: 500; }
 .mc-g { display: grid; grid-template-columns: repeat(3, 1fr); gap: 5px; }
@@ -4234,6 +4235,7 @@ window.RENDER = window.RENDER2D;
     }
     const mon = selMon != null ? enemyById(selMon) : null;
     const wisps = pl.wisps.map((n, t) => n ? mb('wisp', TIERS[t].name + ' 위습', '×' + n, { attrs: ` data-t="${t}"`, hot: true, off: !play }) : '').filter(Boolean).slice(0, 3).join('');
+    if (!mon) return pl.draws ? `<div class="mc-g">${mb('draw', '랜덤 뽑기', '×' + pl.draws, { hot: true })}</div>` : ''; // 아무것도 안 골랐을 땐 건물·보급 패널 숨김
     return `<div class="mc-h">${mon ? (mon.kind === 'story' ? STORIES[mon.idx].name : mon.boss ? '보스' : '몬스터') + ` · 체력 ${fmt(Math.max(0, Math.ceil(mon.hp)))}` : '건물 · 보급'}</div><div class="mc-g">${mb('selb', '강화소', '', { attrs: ' data-k="upgrade"' })}${mb('selb', '💰골드 도박', '', { attrs: ' data-k="ggold"' })}${mb('selb', '🎲유닛 도박', '', { attrs: ' data-k="gunit"' })}${mb('selb', '✨위습 제단', '×' + pl.wisps.reduce((a, b) => a + b, 0), { attrs: ' data-k="wisp"', hot: pl.wisps.some(n => n > 0) })}${pl.draws ? mb('draw', '랜덤 뽑기', '×' + pl.draws, { hot: true }) : ''}${mb('gal', '🏛조합 광장', '')}${mb('mview', '내 라인', '', { attrs: ' data-v="lane"' })}${mb('mview', '스토리존', '', { attrs: ' data-v="story"' })}</div>`;
   }
   // ---- 맨 아래 조합 막대 (원랜디처럼): 등급 낮은 것부터 왼쪽에, 지금 가진 재료 수 표시 ----
