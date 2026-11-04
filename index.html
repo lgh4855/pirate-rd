@@ -3178,6 +3178,16 @@ window.RENDER = window.RENDER2D;
   const tor = (r, t, a = 16, b = 6) => new THREE.TorusGeometry(r, t, b, a);
   const P = {
     leg: new Pool(cyl(0.11, 0.12, 0.45, 6).translate(0, -0.22, 0), flat()),
+    // 체형별 몸통 (드럼통 하나 대신 역할마다 실루엣이 다르게)
+    torsoV: new Pool(cyl(0.3, 0.19, 0.6, 10), flat({ flatShading: true })),
+    chestBig: new Pool(cyl(0.5, 0.26, 0.64, 8), flat({ flatShading: true })),
+    belly: new Pool(sph(0.47, 14, 10), flat({ roughness: 0.6 })),
+    robe: new Pool(cyl(0.24, 0.66, 1.0, 14), flat({ flatShading: true })),
+    coatTail: new Pool(cyl(0.27, 0.56, 0.7, 12, true), flat({ side: THREE.DoubleSide })),
+    shoulder: new Pool(sph(0.21, 10, 8), flat({ roughness: 0.5 })),
+    arm: new Pool(cyl(0.08, 0.065, 0.42, 7).translate(0, -0.21, 0), flat()),
+    hand: new Pool(sph(0.085, 8, 6), flat({ roughness: 0.6 })),
+    collar: new Pool(tor(0.27, 0.07).rotateX(Math.PI / 2), flat({ roughness: 0.5 })),
     torso: new Pool(cyl(0.32, 0.4, 0.7, 10), flat({ flatShading: true })),
     belt: new Pool(tor(0.37, 0.05).rotateX(Math.PI / 2), flat({ roughness: 0.5 })),
     head: new Pool(sph(0.34, 14, 12), flat({ roughness: 0.6 })),
@@ -3371,7 +3381,7 @@ window.RENDER = window.RENDER2D;
       const melee = kind === 'melee' || kind === 'thrust';
       const ak = a.atk < 0.18 ? Math.sin(a.atk / 0.18 * Math.PI) : 0;
       let heading;
-      if (u.moving) heading = Math.atan2(u.tx - u.x, u.ty - u.y); else heading = Math.atan2(Math.cos(a.ang), Math.sin(a.ang));
+      if (u.moving) heading = Math.atan2(u.tx - u.x, u.ty - u.y); else if (a.atk < 1.2 && !u.statue) heading = Math.atan2(Math.cos(a.ang), Math.sin(a.ang)); else heading = 0.35 * Math.sin(t * 0.7 + u.id); // 쉴 때는 카메라 쪽(얼굴이 보이게)
       const fx = Math.sin(heading), fz = Math.cos(heading);
       const lunge = melee ? ak * 0.35 : -ak * 0.12;
       const baseY = water ? -0.15 : GY;
@@ -3443,8 +3453,33 @@ window.RENDER = window.RENDER2D;
       }
       const outfit = col(D.outfit), pants = col(D.pants), skin = col(D.skin), hair = col(D.hair);
       // 몸
-      pushL(P.leg, -0.15 * b, 0.45, 0, sw, 0, 0, 1, pants); pushL(P.leg, 0.15 * b, 0.45, 0, -sw, 0, 0, 1, pants);
-      pushL(P.torso, 0, 0.78, 0, 0, 0, 0, b, outfit, 1, b); pushL(P.belt, 0, 0.6, 0, 0, 0, 0, b, col(D.pants, -0.25), 1, b);
+      // 체형: 칼잡이·닌자=날씬한 역삼각형, 작살·덩치 칼잡이=어깨 넓은 근육형, 포병=배 나온 거구, 마법사=긴 로브, 총잡이·지원=긴 코트, 선장·왕=왕족(넓은 가슴 + 깃 + 망토)
+      const ARCH = D.arch || ({ blade: b >= 1.1 ? 'brute' : 'slim', ninja: 'slim', harpoon: 'brute', cannon: 'heavy', mage: 'robe', gun: 'coat', support: 'coat', captain: 'royal', king: 'royal' }[d.look] || 'slim');
+      const SW = { slim: 0.27, brute: 0.5, heavy: 0.46, robe: 0.3, coat: 0.3, royal: 0.46 }[ARCH] * b, shY = 1.06;
+      const dark = col(D.pants, -0.25);
+      if (ARCH === 'robe') {
+        pushL(P.robe, 0, 0.5, 0, 0, 0, 0, b, outfit, 1, b); pushL(P.torsoV, 0, 0.98, 0, 0, 0, 0, 0.85 * b, outfit, 0.55, 0.85 * b);
+        pushL(P.belt, 0, 0.82, 0, 0, 0, 0, 0.75 * b, col(D.hatC || D.pants), 1, 0.75 * b);
+      } else if (ARCH === 'heavy') {
+        pushL(P.leg, -0.18 * b, 0.4, 0, sw * 0.6, 0, 0, 1.35, pants, 0.8, 1.35); pushL(P.leg, 0.18 * b, 0.4, 0, -sw * 0.6, 0, 0, 1.35, pants, 0.8, 1.35);
+        pushL(P.belly, 0, 0.74, 0.04, 0, 0, 0, 1.05 * b, outfit, 0.95, 1.05 * b); pushL(P.belt, 0, 0.56, 0.02, 0, 0, 0, 1.12 * b, dark, 1, 1.12 * b);
+      } else {
+        pushL(P.leg, -0.14 * b, 0.45, 0, sw, 0, 0, 1, pants); pushL(P.leg, 0.14 * b, 0.45, 0, -sw, 0, 0, 1, pants);
+        if (ARCH === 'slim') pushL(P.torsoV, 0, 0.8, 0, 0, 0, 0, b, outfit, 1, b);
+        else if (ARCH === 'coat') { pushL(P.torsoV, 0, 0.8, 0, 0, 0, 0, b, outfit, 1, b); pushL(P.coatTail, 0, 0.45, -0.05, -0.12 - (u.moving ? 0.15 : 0), 0, 0, b, col(D.outfit, -0.15), 1, b); }
+        else { pushL(P.chestBig, 0, 0.82, 0, 0, 0, 0, b, outfit, 1, b * 0.85); }
+        pushL(P.belt, 0, 0.58, 0, 0, 0, 0, ARCH === 'slim' || ARCH === 'coat' ? 0.62 * b : 0.78 * b, dark, 1, ARCH === 'slim' || ARCH === 'coat' ? 0.62 * b : 0.78 * b);
+        if (ARCH === 'brute' || ARCH === 'royal') for (const sx of [-1, 1]) pushL(P.shoulder, sx * SW * 0.95, shY + 0.02, 0, 0, 0, 0, b, ARCH === 'royal' ? col(D.hatC || '#f4bf3c') : outfit);
+        if (ARCH === 'royal') pushL(P.collar, 0, 1.13, 0, 0, 0, 0, b, col(D.hatC || '#f4bf3c'));
+      }
+      // 팔 + 손: 왼팔은 걸을 때 흔들고, 오른팔은 무기를 든 손 쪽으로
+      { const armC = ARCH === 'robe' || ARCH === 'coat' ? outfit : ARCH === 'brute' ? skin : outfit, aw = ARCH === 'brute' ? 1.6 : ARCH === 'heavy' ? 1.4 : ARCH === 'robe' ? 1.45 : 1;
+        const lrx = -sw * 0.8, rrx = -0.75 + (a.atk < 0.18 && kind === 'melee' ? -0.9 + (a.atk / 0.18) * 1.6 : 0) - ak * 0.3;
+        for (const [sx, rx] of [[-1, lrx], [1, rrx]]) {
+          pushL(P.arm, sx * SW, shY, 0, rx, 0, sx * 0.12, aw, armC, 1, aw);
+          const L = 0.42, hx2 = sx * (SW + 0.05), hy2 = shY - L * Math.cos(rx), hz2 = -L * Math.sin(rx);
+          pushL(P.hand, hx2, hy2, hz2, 0, 0, 0, aw, skin);
+        } }
       pushL(P.head, 0, 1.4, 0, 0, 0, 0, 1, skin);
       const ghost = D.extras.includes('ghostly');
       pushL(P.eye, -0.12, 1.43, 0.31, 0, 0, 0, 1, ghost ? GHOSTEYE : INK); pushL(P.eye, 0.12, 1.43, 0.31, 0, 0, 0, 1, ghost ? GHOSTEYE : INK);
@@ -3466,7 +3501,7 @@ window.RENDER = window.RENDER2D;
       if (ghost && !G.reduced) glow(u.x, u.y, 24, 46, '#8af0c0', 0.22);
       if (fly) { const fl = Math.sin(t * 14 + u.id) * 0.5; pushL(P.wing, -0.1, 0.95, -0.25, 0, 0.3, 0.5 + fl, 1, WHITE); pushL(P.wing, 0.1, 0.95, -0.25, 0, Math.PI - 0.3, 0.5 + fl, 1, WHITE); }
       // 손 + 무기 (무기 종류별 동작)
-      let hx = 0.38 * b, hy = 0.85, hz = 0.05, hrx = 0, hry = 0, hrz = 0, wz = 0;
+      let hx = SW + 0.05, hy = 0.8, hz = 0.2, hrx = 0, hry = 0, hrz = 0, wz = 0;
       if (kind === 'melee') hrx = a.atk < 0.18 ? -1.4 + (a.atk / 0.18) * 2.4 : -0.3;
       else if (kind === 'thrust') wz = ak * 0.45;
       else if (kind === 'gun') wz = -ak * 0.15;
