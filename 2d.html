@@ -424,10 +424,16 @@ html.rot body.m #mrec:not([hidden]) { width: min(calc(var(--rw) * 0.58), 270px);
 .ms-mks { display: flex; flex-direction: column; gap: 5px; margin-top: 6px; }
 .ms-mk { display: flex; align-items: center; gap: 7px; width: 100%; padding: 3px 7px; border-radius: 10px; border: 2px solid var(--tc); background: rgba(255,255,255,0.06); color: #fff; text-align: left; font: inherit; cursor: pointer; animation: mkGlow 1.4s ease-in-out infinite; }
 .ms-mk .mini { width: 28px; height: 28px; font-size: 14px; flex: none; }
-.ms-mk span { display: flex; flex-direction: column; line-height: 1.15; }
+.ms-mk span { display: flex; flex-direction: column; line-height: 1.15; min-width: 0; }
 .ms-mk small { color: var(--tc); font-size: 10px; font-weight: 700; }
 .ms-mk b { font-size: 13px; white-space: nowrap; }
-.ms-mk:disabled { opacity: .5; animation: none; }
+.ms-mk:not(.can) { animation: none; border-style: dashed; background: rgba(255,255,255,0.03); }
+.ms-mk:disabled { cursor: default; color: #fff; opacity: 1; }
+.ms-mk:not(.can) .mini, .ms-mk:not(.can) b { opacity: .6; }
+.ms-mk em { display: flex; flex-wrap: wrap; column-gap: 2px; font-style: normal; font-size: 11px; color: #9fb4c0; line-height: 1.3; }
+.ms-mk { overflow: hidden; }
+.ms-mk em i { white-space: nowrap; font-style: normal; color: var(--ic, #9fb4c0); opacity: .75; }
+.ms-mk em i.ok { opacity: 1; font-weight: 700; }
 @keyframes mkGlow { 50% { box-shadow: 0 0 10px var(--tc); } }
 
 /* 조합법 패널: 작게 */
@@ -4239,10 +4245,10 @@ window.RENDER = window.RENDER2D;
         return `<div class="mrec${r.ok ? ' hot' : ''}"><div class="mr-top"><b style="color:${TT.color}">${r.dd.name}</b><small>${TT.name}</small><button data-a="recipe" data-id="${r.id}" ${r.ok && play ? '' : 'disabled'}>조합</button></div><div class="mr-ab">${tags(r.dd, 4)} <span class="mr-sk">${skillLine(r.dd)}</span></div><div class="mr-ing">${ings}${cost}</div></div>`;
       }).join('');
       const cnt = us.length > 1 ? `선택 ${us.length}명` : `${haveN}명 보유`;
-      // 이 선원이 조합식에서 가장 높은 등급 재료인 조합만, 지금 만들 수 있을 때 버튼으로 보여 줌
+      // 이 선원이 조합식에서 가장 높은 등급 재료인 조합을 버튼으로 보여 줌 (재료가 모자라면 흐리게, 필요한 재료 이름 표시)
       const keyOf = id => RECIPES[id].reduce((b, t) => UNITS[t].tier > UNITS[b].tier ? t : b, RECIPES[id][0]);
-      const mine = RD.usesOf(u.type).filter(id => keyOf(id) === u.type).map(id => { const dd = UNITS[id], TT = TIERS[dd.tier]; return { id, dd, TT, ok: !!RD.recipeUnits(S, ME, id, u.id) && pl.wood >= (TT.wood || 0) && pl.gold >= (TT.gold || 0) }; }).filter(r => r.ok).sort((a, b) => b.dd.tier - a.dd.tier).slice(0, 4);
-      const mk = mine.length ? `<div class="ms-mks">${mine.map(r => `<button class="ms-mk" data-a="recipe" data-id="${r.id}" style="--tc:${r.TT.color}" ${play ? '' : 'disabled'}>${badge(r.id, 'mini')}<span><small>${r.TT.name}</small><b>${r.dd.name} 조합</b></span></button>`).join('')}</div>` : '';
+      const mine = RD.usesOf(u.type).filter(id => keyOf(id) === u.type).map(id => { const dd = UNITS[id], TT = TIERS[dd.tier]; return { id, dd, TT, ok: !!RD.recipeUnits(S, ME, id, u.id) && pl.wood >= (TT.wood || 0) && pl.gold >= (TT.gold || 0) }; }).sort((a, b) => (b.ok - a.ok) || (b.dd.tier - a.dd.tier)).slice(0, 5);
+      const mk = mine.length ? `<div class="ms-mks">${mine.map(r => `<button class="ms-mk${r.ok ? ' can' : ''}" data-a="recipe" data-id="${r.id}" style="--tc:${r.TT.color}" ${r.ok && play ? '' : 'disabled'}>${badge(r.id, 'mini')}<span><small>${r.TT.name}</small><b>${r.dd.name} 조합</b><em>${(() => { const hv = RD.recipeHave(S, ME, r.id); return RECIPES[r.id].map((t, k) => `<i class="${hv[k] ? 'ok' : ''}" style="--ic:${TIERS[UNITS[t].tier].color}">${UNITS[t].name}${hv[k] ? '✓' : ''}</i>`).join('+') + (r.TT.wood ? ` <i class="${pl.wood >= r.TT.wood ? 'ok' : ''}">🪵${r.TT.wood}</i>` : '') + (r.TT.gold ? ` <i class="${pl.gold >= r.TT.gold ? 'ok' : ''}">💰${r.TT.gold}</i>` : ''); })()}</em></span></button>`).join('')}</div>` : '';
       const btns = `<div class="ms-btns">${mb('cmd', '홀드', '', { attrs: ' data-c="hold"', hot: us.every(o => o.order === 'hold') })}${mb('combine', '랜덤 조합', T.need && !d.excl ? `${haveN}/${T.need}` : '불가', { hot: can, off: !can || !play })}</div>`;
       return `<div class="ms-h"><span style="color:${T.color}">${T.name}</span> ${d.name} <span class="dt ${d.dtype === 'm' ? 'm' : 'p'}">${d.dtype === 'm' ? '마뎀' : '물뎀'}</span><small class="ms-n">${cnt}</small></div>` + stat + btns + mk + '<!--CARD--><!--REC-->';
     }
