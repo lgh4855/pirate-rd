@@ -3290,6 +3290,107 @@ window.RENDER = window.RENDER2D;
   const WCOL = { cutlass: '#c8d0d8', dualswords: '#e0e6ec', katana: '#e8eef4', kunai: '#9aa4ae', thunderblade: '#ffe066', goldkatana: '#ffd23f', goldcutlass: '#ffd23f', trident: '#ffd23f', whipspear: '#c8d0d8', harpoon: '#8b6a3a', musket: '#5a3a20', rifle: '#3a3a30', pistols: '#3a3030', handcannon: '#3a4048', bigcannon: '#4a525a', bomb: '#1d2228', flask: '#8ee05a', icestaff: '#bff0ff', stormstaff: '#ffe066', conchstaff: '#ffb0c8', clockstaff: '#d8b040', wateror: '#7fd8ff', starwand: '#fff2a0', charm: '#ffffff', lantern: '#3affb0', drum: '#a0522d' };
   const WGLOW = { thunderblade: '#ffe066', goldkatana: '#fff2b0', goldcutlass: '#ffd23f', trident: '#7fd8ff', icestaff: '#9fe3ff', stormstaff: '#ffe066', conchstaff: '#3ac0b0', clockstaff: '#e6d3ff', wateror: '#3ac0e8', starwand: '#fff2a0', charm: '#ff8ab0', lantern: '#3affb0', flask: '#8ee05a', bomb: '#ffb347' };
   Object.assign(WCOL, { scythe: '#c8c8d8', axe: '#b8c0c8', gauntlet: '#b8c0c8', greatsword: '#e8eef4', tome: '#4a4ac0', fan: '#ffd23f', moonstaff: '#ffe38a' });
+
+  // ---- 선원 모델 모드: '' = 지금(직접 만든 체형) / 'knight' = 기사 기본 모델 / 'chibi' = 치비 기본 모델 (Quaternius CC0) ----
+  const CH = (() => {
+    let mode = '';
+    try { mode = new URLSearchParams(location.search).get('char') || localStorage.getItem('rd_char') || ''; } catch (e) {}
+    const bases = {}, objs = new Map(), matCache = {}, _v = new THREE.Vector3(), _q = new THREE.Quaternion(), _e = new THREE.Euler();
+    const CFGM = {
+      knight: { rotY: Math.PI, idle: 'Idle', walk: 'Walking', atk: 'Run_swordAttack', head: 'Head', hand: 'PalmR', H: 1.75, hatY: 0.2, mats: { Armor: 'outfit', Boots: 'pants', Skin: 'skin' }, hide: [] },
+      chibi:  { idle: 'Idle', walk: 'Walk', atk: 'Punch', shoot: 'Idle_Shoot', head: 'Head', hand: 'FistR', H: 1.55, hatY: 0.42, mats: { Main: 'outfit', Main_Light: 'pants', Main2: 'skin', EyeColor: 'ink' }, hide: ['Ears'] },
+    };
+    if (window.RD_GLB && THREE.GLTFLoader) {
+      const L = new THREE.GLTFLoader();
+      for (const name in window.RD_GLB) {
+        const bin = atob(window.RD_GLB[name]), buf = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) buf[i] = bin.charCodeAt(i);
+        L.parse(buf.buffer, '', (g) => { const bb = new THREE.Box3().setFromObject(g.scene); g.h = bb.max.y - bb.min.y; prep(name, g); bases[name] = g; }, () => {});
+      }
+    }
+    // 최적화: 재질별로 나뉜 조각들을 하나로 합치고 색은 꼭짓점 색으로 → 선원 1명 = 그리기 1번
+    function prep(name, g) {
+      const cf = CFGM[name]; if (!cf) return;
+      const parts = []; g.scene.traverse(n => { if (n.isSkinnedMesh && !cf.hide.includes(n.name) && !cf.hide.includes(n.parent && n.parent.name)) parts.push(n); });
+      if (!parts.length) return;
+      const bn = m => m.skeleton.bones.map(b => b.name).join(',');
+      if (parts.some(m => bn(m) !== bn(parts[0]))) return; // 뼈대가 다르면 합치지 않음
+      const roles = [], origCol = {}, pos = [], nor = [], si = [], sw = [], idx = []; let base = 0;
+      for (const m of parts) {
+        const G = m.geometry, A = G.attributes, n = A.position.count, mn = m.material.name; origCol[mn] = m.material.color.clone();
+        for (let i = 0; i < n; i++) { pos.push(A.position.getX(i), A.position.getY(i), A.position.getZ(i)); nor.push(A.normal.getX(i), A.normal.getY(i), A.normal.getZ(i)); si.push(A.skinIndex.getX(i), A.skinIndex.getY(i), A.skinIndex.getZ(i), A.skinIndex.getW(i)); sw.push(A.skinWeight.getX(i), A.skinWeight.getY(i), A.skinWeight.getZ(i), A.skinWeight.getW(i)); roles.push(mn); }
+        if (G.index) for (let i = 0; i < G.index.count; i++) idx.push(G.index.getX(i) + base); else for (let i = 0; i < n; i++) idx.push(i + base);
+        base += n;
+      }
+      const geo = new THREE.BufferGeometry();
+      geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); geo.setAttribute('normal', new THREE.Float32BufferAttribute(nor, 3));
+      geo.setAttribute('skinIndex', new THREE.Uint16BufferAttribute(si, 4)); geo.setAttribute('skinWeight', new THREE.Float32BufferAttribute(sw, 4)); geo.setIndex(idx);
+      const keep = parts[0]; keep.name = 'RD_BODY';
+      for (const m of parts.slice(1)) m.parent.remove(m);
+      g.scene.traverse(n => { if (n.isMesh && n !== keep) n.visible = false; });
+      keep.geometry = geo; keep.material = new THREE.MeshStandardMaterial({ skinning: true, vertexColors: true, roughness: 0.75, metalness: 0, flatShading: name === 'knight' });
+      keep.castShadow = true; keep.frustumCulled = false;
+      g.merged = { geo, roles, origCol, mat: keep.material, typed: {} };
+    }
+    function geoFor(type, D) {
+      const M = bases[mode].merged; if (M.typed[type]) return M.typed[type];
+      const cf = CFGM[mode], g = new THREE.BufferGeometry(), col = new Float32Array(M.roles.length * 3), cc = {};
+      for (const k in M.geo.attributes) g.setAttribute(k, M.geo.attributes[k]); g.setIndex(M.geo.index);
+      M.roles.forEach((mn, i) => { if (!cc[mn]) { const role = cf.mats[mn], c = role === 'ink' ? '#141414' : role ? D[role] : null; cc[mn] = c ? new THREE.Color(c) : M.origCol[mn]; } const c = cc[mn]; col[i * 3] = c.r; col[i * 3 + 1] = c.g; col[i * 3 + 2] = c.b; });
+      g.setAttribute('color', new THREE.BufferAttribute(col, 3));
+      return (M.typed[type] = g);
+    }
+    const ok = () => !!(mode && bases[mode] && THREE.SkeletonUtils);
+    function matFor(type, D, mname, orig) {
+      const k = mode + type + mname; if (matCache[k]) return matCache[k];
+      const role = CFGM[mode].mats[mname], m = orig.clone();
+      const c = role === 'ink' ? '#141414' : role ? D[role] : null;
+      if (c) m.color = new THREE.Color(c);
+      m.metalness = 0; m.roughness = 0.75; m.flatShading = mode === 'knight';
+      return (matCache[k] = m);
+    }
+    function make(u, D) {
+      const base = bases[mode], cf = CFGM[mode], o = THREE.SkeletonUtils.clone(base.scene), r0 = { meshes: [] };
+      if (base.merged) o.traverse(n => { if (n.name === 'RD_BODY') n.geometry = geoFor(u.type, D); });
+      else o.traverse(n => {
+        if (n.isMesh) { if (cf.hide.includes(n.name) || cf.hide.includes(n.parent && n.parent.name)) n.visible = false; n.material = Array.isArray(n.material) ? n.material.map(m => matFor(u.type, D, m.name, m)) : matFor(u.type, D, n.material.name, n.material); n.castShadow = true; n.frustumCulled = false; }
+      });
+      o.traverse(n => { if (n.isMesh) r0.meshes.push(n); });
+      const mixer = new THREE.AnimationMixer(o), acts = {};
+      for (const c of base.animations) acts[c.name.split('|').pop()] = mixer.clipAction(c);
+      let head = null, hand = null; o.traverse(n => { if (n.isBone || n.type === 'Bone') { if (n.name === cf.head) head = n; if (n.name === cf.hand) hand = n; } });
+      scene.add(o);
+      const r = { o, mixer, acts, cur: '', head, hand, type: u.type, seen: 0, meshes: r0.meshes, k: objs.size, sh: true };
+      objs.set(u.id, r); return r;
+    }
+    function play(r, name, fade = 0.15) { if (r.cur === name || !r.acts[name]) return; const a = r.acts[name]; a.reset().fadeIn(fade).play(); if (r.cur && r.acts[r.cur]) r.acts[r.cur].fadeOut(fade); r.cur = name; }
+    let frame = 0;
+    return {
+      get mode() { return mode; }, ok,
+      set(m) { mode = m || ''; try { localStorage.setItem('rd_char', mode); } catch (e) {} for (const r of objs.values()) { scene.remove(r.o); } objs.clear(); },
+      begin() { frame++; },
+      // 한 선원을 모델로 그림. 머리·손의 실제 위치를 돌려줘서 모자·무기를 거기에 붙임
+      draw(u, D, X, Y, Z, heading, s, a, kind, dt) {
+        let r = objs.get(u.id); if (r && r.type !== u.type) { scene.remove(r.o); objs.delete(u.id); r = null; }
+        if (!r) r = make(u, D); r.seen = frame;
+        const cf = CFGM[mode], k = s * cf.H / bases[mode].h;
+        r.o.position.set(X, Y - 0.02, Z); r.o.rotation.set(0, heading + (cf.rotY || 0), 0); r.o.scale.setScalar(k);
+        const atkNow = a.atk < 0.35, gun = kind === 'gun' || kind === 'cannon';
+        play(r, u.moving ? cf.walk : atkNow && !u.statue ? (gun && cf.shoot ? cf.shoot : cf.atk) : cf.idle);
+        // 선원이 많으면: 그림자 끄고, 애니메이션은 절반씩 번갈아 갱신
+        const many = objs.size > 60, sh = !many; if (r.sh !== sh) { r.sh = sh; for (const m of r.meshes) m.castShadow = sh; }
+        if (u.statue) r.mixer.update(0); else if (!many) r.mixer.update(dt); else if ((r.k + frame) % 2 === 0) r.mixer.update(dt * 2);
+        r.o.updateMatrixWorld(true);
+        const out = { head: null, hand: null };
+        if (r.head) { r.head.getWorldPosition(_v); out.head = _v.clone(); }
+        if (r.hand) { r.hand.getWorldPosition(_v); r.hand.getWorldQuaternion(_q); out.hand = _v.clone(); out.handQ = _q.clone(); }
+        return out;
+      },
+      end() { for (const [id, r] of objs) if (r.seen !== frame) { scene.remove(r.o); objs.delete(id); } },
+      count: () => objs.size,
+    };
+  })();
+  window.RD_CHAR = CH;
+  const CH_HATY = () => CH.mode === 'chibi' ? 0.28 : 0.22;
   Object.assign(WGLOW, { scythe: '#b8a0ff', tome: '#7a8cff', fan: '#5fd0ff', moonstaff: '#c08aff' });
   // 머리카락 · 장식
   const XTRA = {
@@ -3368,12 +3469,13 @@ window.RENDER = window.RENDER2D;
   function drawUnits(G) {
     const S = G.S, t = G.clock, sel = new Set(G.selIds);
     for (const g of ALLP) for (const k in g) g[k].begin();
+    CH.begin();
     const R = new THREE.Matrix4(), L = new THREE.Matrix4(), H = new THREE.Matrix4();
     const GALU = window.RDGAL && G.view.y > WORLD.h - 300 ? window.RDGAL.statues : [];
     for (const u of GALU.length ? S.units.concat(GALU) : S.units) {
       const d = UNITS[u.type], D = DESIGNS[u.type] || DESIGNS.sword, a = G.anim(u.id), tc = TIERS[d.tier].color;
       const kind = WEAPON_KIND[D.weapon] || 'melee', b = D.build || 1;
-      const s = 1.25 * (0.92 + d.tier * 0.06) * (1 + Math.max(0, a.pop) * 0.9);
+      const s = 1.1 * (0.92 + d.tier * 0.04) * (1 + Math.max(0, a.pop) * 0.9);
       const water = groundY(u, d) === 'water', fly = d.move === 'fly' && !u.statue;
       const bob = G.reduced ? 0 : u.moving ? Math.abs(Math.sin(a.walk)) * 0.12 : Math.sin(t * 3 + u.id) * 0.04;
       const hop = a.cast < 0.45 ? Math.sin(a.cast / 0.45 * Math.PI) * 0.6 : 0;
@@ -3453,6 +3555,17 @@ window.RENDER = window.RENDER2D;
       }
       const outfit = col(D.outfit), pants = col(D.pants), skin = col(D.skin), hair = col(D.hair);
       // 몸
+      const useM = CH.ok();
+      let MH = null;
+      if (useM) {
+        MH = CH.draw(u, D, X, Y, Z, heading, s, a, kind, G.rdt || 1 / 60);
+        // 모자: 모델 머리 위치에 붙임
+        if (MH.head && D.hat && D.hat !== 'none' && HP[D.hat]) { comp(MH.head.x, MH.head.y + CH_HATY() * s, MH.head.z, 0, heading, 0, s); HP[D.hat].push(_m, col(D.hatC || '#444')); }
+        // 무기: 모델 오른손에 쥐어 줌
+        const wpm = WP3[D.weapon];
+        if (wpm && MH.hand) { L.makeRotationFromQuaternion(MH.handQ); L.multiply(new THREE.Matrix4().makeRotationX(-Math.PI / 2)); L.setPosition(MH.hand.x, MH.hand.y, MH.hand.z); const sc = new THREE.Matrix4().makeScale(s, s, s); wpm.push(L.multiply(sc), D.weapon === 'banner' ? col(D.hatC2 || D.outfit) : (D.weapon === 'tome' || D.weapon === 'fan') ? col(D.outfit) : col(WCOL[D.weapon] || '#c8d0d8')); }
+        for (const e of D.extras) { if (e === 'halo' && MH.head) { comp(MH.head.x, MH.head.y + (CH_HATY() + 0.35) * s, MH.head.z, 0, 0, 0, s); XTRA.halo.push(_m); } else if (e === 'cape') pushL(P.cape, 0, 0.78, -0.12 * b, Math.sin(t * 3 + u.id) * 0.08 - (u.moving ? 0.25 : 0), 0, 0, b, col(D.cape || D.outfit)); }
+      } else {
       // 체형: 칼잡이·닌자=날씬한 역삼각형, 작살·덩치 칼잡이=어깨 넓은 근육형, 포병=배 나온 거구, 마법사=긴 로브, 총잡이·지원=긴 코트, 선장·왕=왕족(넓은 가슴 + 깃 + 망토)
       const ARCH = D.arch || ({ blade: b >= 1.1 ? 'brute' : 'slim', ninja: 'slim', harpoon: 'brute', cannon: 'heavy', mage: 'robe', gun: 'coat', support: 'coat', captain: 'royal', king: 'royal' }[d.look] || 'slim');
       const SW = { slim: 0.27, brute: 0.5, heavy: 0.46, robe: 0.3, coat: 0.3, royal: 0.46 }[ARCH] * b, shY = 1.06;
@@ -3518,6 +3631,7 @@ window.RENDER = window.RENDER2D;
         if (kind === 'staff') glow(u.x, u.y, ((Y - GY) + (hy + 0.95) * s) / K, 22 + ak * 24, wg, 0.45 + ak * 0.3);
         else if (ak > 0) glow(u.x + fx * 14, u.y + fz * 14, 20, 34, wg, ak * 0.5);
       }
+      }
       // 발밑 원 · 선택 · 물
       comp(u.x * K, (water ? -0.12 : GY) + 0.03, u.y * K, 0, 0, 0, s); P.ringT.push(_m, u.owner === G.ME ? cTier[d.tier] : col(PCOLORS[u.owner]));
       if (sel.has(u.id)) { comp(u.x * K, (water ? -0.12 : GY) + 0.04, u.y * K, 0, 0, 0, s); P.ringSel.push(_m); }
@@ -3527,6 +3641,7 @@ window.RENDER = window.RENDER2D;
       if (a.rapid > 0) glow(u.x, u.y, 24, 70, '#ffb347', 0.25 + Math.sin(t * 20) * 0.1);
     }
     for (const g of ALLP) for (const k in g) g[k].end();
+    CH.end();
   }
 
   // ---- 몬스터 그리기 ----
@@ -3676,10 +3791,10 @@ window.RENDER = window.RENDER2D;
     torch.intensity = 1.4 + Math.sin(t * 13) * 0.15 + Math.sin(t * 7) * 0.2;
     syncStructs(G.S, t);
     FX.glow.begin(); FX.ring.begin(); FX.disc.begin(); FX.band.begin(); FX.ball.begin(); ln = 0;
-    syncStations(G, t); drawUnits(G); drawMonsters(G); drawWisps(G); drawFx(G);
+    syncStations(G, t); { const _u = performance.now(); drawUnits(G); window.__du = performance.now() - _u; } drawMonsters(G); drawWisps(G); drawFx(G);
     FX.glow.end(); FX.ring.end(); FX.disc.end(); FX.band.end(); FX.ball.end();
     lineGeo.setDrawRange(0, ln * 2); lineGeo.attributes.position.needsUpdate = true; lineGeo.attributes.color.needsUpdate = true;
-    renderer.render(scene, cam);
+    { const _t = performance.now(); renderer.render(scene, cam); window.__r3 = { calls: renderer.info.render.calls, tris: renderer.info.render.triangles, gl: performance.now() - _t }; }
     if (G.shake > 0) { camKey = ''; setCam(v); }
     drawLabels(G);
   }
@@ -5330,7 +5445,7 @@ window.RENDER = window.RENDER2D;
       R.render({ S, ME, names: NET.on && NET.game ? NET.game.slots.map(s => tagName(s.nick, s.clears)) : (PROF.nick ? [tagName(PROF.nick, myClears())] : null), view, dt, rdt, clock, fx, parts, anim: A, selIds, hl, hoverWisp: hw, shake: reduced ? 0 : shake, reduced, ctx, dpr, DF });
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       if (R.overlayBars) drawBars();
-      drawTargets(); drawTexts(); drawDrag(); drawScreenHud(); if (view.y <= WORLD.h - 60) drawMinimap(); drawBanner(running ? rdt : 0); drawEdgeHint(px, py);
+      drawTargets(); drawTexts(); drawDrag(); drawScreenHud(); if (!window.__shot && view.y <= WORLD.h - 60) drawMinimap(); if (!window.__shot) drawBanner(running ? rdt : 0); drawEdgeHint(px, py);
       if (hw) { const p = toScreen(hw.x, hw.y, 20); ctx.font = '700 11px sans-serif'; ctx.textAlign = 'center'; ctx.lineWidth = 3; ctx.strokeStyle = '#0b1620'; const s = `${TIERS[hw.tier].name} 위습 · 클릭해서 사용`; ctx.strokeText(s, p.x, p.y); ctx.fillStyle = '#e6eef2'; ctx.fillText(s, p.x, p.y); ctx.textAlign = 'start'; }
       if ($('fps')) $('fps').textContent = `${fps} FPS · 선원 ${S.units.length} · 몬스터 ${S.monsters.length}`;
     }

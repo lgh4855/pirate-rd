@@ -4462,7 +4462,7 @@ window.RENDER = window.RENDER2D;
       R.render({ S, ME, names: NET.on && NET.game ? NET.game.slots.map(s => tagName(s.nick, s.clears)) : (PROF.nick ? [tagName(PROF.nick, myClears())] : null), view, dt, rdt, clock, fx, parts, anim: A, selIds, hl, hoverWisp: hw, shake: reduced ? 0 : shake, reduced, ctx, dpr, DF });
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       if (R.overlayBars) drawBars();
-      drawTargets(); drawTexts(); drawDrag(); drawScreenHud(); if (view.y <= WORLD.h - 60) drawMinimap(); drawBanner(running ? rdt : 0); drawEdgeHint(px, py);
+      drawTargets(); drawTexts(); drawDrag(); drawScreenHud(); if (!window.__shot && view.y <= WORLD.h - 60) drawMinimap(); if (!window.__shot) drawBanner(running ? rdt : 0); drawEdgeHint(px, py);
       if (hw) { const p = toScreen(hw.x, hw.y, 20); ctx.font = '700 11px sans-serif'; ctx.textAlign = 'center'; ctx.lineWidth = 3; ctx.strokeStyle = '#0b1620'; const s = `${TIERS[hw.tier].name} 위습 · 클릭해서 사용`; ctx.strokeText(s, p.x, p.y); ctx.fillStyle = '#e6eef2'; ctx.fillText(s, p.x, p.y); ctx.textAlign = 'start'; }
       if ($('fps')) $('fps').textContent = `${fps} FPS · 선원 ${S.units.length} · 몬스터 ${S.monsters.length}`;
     }
