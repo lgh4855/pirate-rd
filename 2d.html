@@ -421,7 +421,13 @@ body:not(.m) #mrec:not([hidden]) { top: 8px; }
 .mr-title { font-size: 12px; font-weight: 800; color: var(--gold); margin: 0 2px; }
 html.rot body.m #mrec:not([hidden]) { width: min(calc(var(--rw) * 0.58), 270px); max-height: calc(var(--rh) * 0.46); }
 #mrec:empty { display: none !important; }
-.ms-mks { display: flex; flex-direction: column; gap: 5px; margin-top: 6px; }
+#mrec .ms-mks { pointer-events: auto; touch-action: pan-y; gap: 4px; }
+#mrec .ms-mk { padding: 3px 6px; gap: 6px; border-radius: 9px; }
+#mrec .ms-mk .mini { width: 26px; height: 26px; font-size: 13px; }
+#mrec .ms-mk b { font-size: 12px; }
+#mrec .ms-mk small { font-size: 9.5px; }
+#mrec .ms-mk em { font-size: 10px; line-height: 1.25; }
+.ms-mks { display: flex; flex-direction: column; gap: 5px; }
 .ms-mk { display: flex; align-items: center; gap: 7px; width: 100%; padding: 3px 7px; border-radius: 10px; border: 2px solid var(--tc); background: rgba(255,255,255,0.06); color: #fff; text-align: left; font: inherit; cursor: pointer; animation: mkGlow 1.4s ease-in-out infinite; }
 .ms-mk .mini { width: 28px; height: 28px; font-size: 14px; flex: none; }
 .ms-mk span { display: flex; flex-direction: column; line-height: 1.15; min-width: 0; }
@@ -4250,7 +4256,7 @@ window.RENDER = window.RENDER2D;
       const mine = RD.usesOf(u.type).filter(id => keyOf(id) === u.type).map(id => { const dd = UNITS[id], TT = TIERS[dd.tier]; return { id, dd, TT, ok: !!RD.recipeUnits(S, ME, id, u.id) && pl.wood >= (TT.wood || 0) && pl.gold >= (TT.gold || 0) }; }).sort((a, b) => (b.ok - a.ok) || (b.dd.tier - a.dd.tier)).slice(0, 5);
       const mk = mine.length ? `<div class="ms-mks">${mine.map(r => `<button class="ms-mk${r.ok ? ' can' : ''}" data-a="recipe" data-id="${r.id}" style="--tc:${r.TT.color}" ${r.ok && play ? '' : 'disabled'}>${badge(r.id, 'mini')}<span><small>${r.TT.name}</small><b>${r.dd.name} 조합</b><em>${(() => { const hv = RD.recipeHave(S, ME, r.id); return RECIPES[r.id].map((t, k) => `<i class="${hv[k] ? 'ok' : ''}" style="--ic:${TIERS[UNITS[t].tier].color}">${UNITS[t].name}${hv[k] ? '✓' : ''}</i>`).join('+') + (r.TT.wood ? ` <i class="${pl.wood >= r.TT.wood ? 'ok' : ''}">🪵${r.TT.wood}</i>` : '') + (r.TT.gold ? ` <i class="${pl.gold >= r.TT.gold ? 'ok' : ''}">💰${r.TT.gold}</i>` : ''); })()}</em></span></button>`).join('')}</div>` : '';
       const btns = `<div class="ms-btns">${mb('cmd', '홀드', '', { attrs: ' data-c="hold"', hot: us.every(o => o.order === 'hold') })}${mb('combine', '랜덤 조합', T.need && !d.excl ? `${haveN}/${T.need}` : '불가', { hot: can, off: !can || !play })}</div>`;
-      return `<div class="ms-h"><span style="color:${T.color}">${T.name}</span> ${d.name} <span class="dt ${d.dtype === 'm' ? 'm' : 'p'}">${d.dtype === 'm' ? '마뎀' : '물뎀'}</span><small class="ms-n">${cnt}</small></div>` + stat + btns + mk + '<!--CARD--><!--REC-->';
+      return `<div class="ms-h"><span style="color:${T.color}">${T.name}</span> ${d.name} <span class="dt ${d.dtype === 'm' ? 'm' : 'p'}">${d.dtype === 'm' ? '마뎀' : '물뎀'}</span><small class="ms-n">${cnt}</small></div>` + stat + btns + '<!--CARD--><!--REC-->' + mk;
     }
     const mon = selMon != null ? enemyById(selMon) : null;
     const wisps = pl.wisps.map((n, t) => n ? mb('wisp', TIERS[t].name + ' 위습', '×' + n, { attrs: ` data-t="${t}"`, hot: true, off: !play }) : '').filter(Boolean).slice(0, 3).join('');
