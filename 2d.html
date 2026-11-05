@@ -684,6 +684,9 @@ body.pc .endcard { zoom: 1.3; }
 .mcard .mc-tip { margin-top: 6px; font-size: 11.5px; color: #ffd23f; }
 .mcard .mc-rw { margin-top: 4px; font-size: 11px; color: #c6d4dc; }
 .mcard .mc-hint { display: block; margin-top: 5px; font-size: 10.5px; color: #7f97a5; }
+.ms-mk .mk-dt { font-style: normal; font-size: 0.9em; font-weight: 700; padding: 0 5px; border-radius: 5px; margin-left: 3px; color: #fff; }
+.ms-mk .mk-dt.p { background: #e2504a; }
+.ms-mk .mk-dt.m { background: #3b82f6; }
 </style>
 </head><body>
 <div class="wrap">
@@ -4416,7 +4419,7 @@ window.RENDER = window.RENDER2D;
       const SPC = t => t === 'pship' || t === 'blackpearl', rk = t => UNITS[t].tier === 5 ? 4 : UNITS[t].tier;
       const isKey = (id, t) => { if (SPC(t)) return true; const ing = RECIPES[id].filter(x => !SPC(x)), mx = Math.max(...ing.map(rk)); return rk(t) === mx; };
       const mine = RD.usesOf(u.type).filter(id => isKey(id, u.type)).map(id => { const dd = UNITS[id], TT = TIERS[dd.tier]; return { id, dd, TT, ok: !!RD.recipeUnits(S, ME, id, u.id) && pl.wood >= (TT.wood || 0) && pl.gold >= (TT.gold || 0) }; }).sort((a, b) => (b.ok - a.ok) || (b.dd.tier - a.dd.tier)).slice(0, 5);
-      const mk = mine.length ? `<div class="ms-mks">${mine.map(r => `<button class="ms-mk${r.ok ? ' can' : ''}" data-a="recipe" data-id="${r.id}" style="--tc:${r.TT.color}" ${r.ok && play ? '' : 'disabled'}>${badge(r.id, 'mini')}<span><small>${r.TT.name}</small><b>${r.dd.name} 조합</b><em>${(() => { const hv = RD.recipeHave(S, ME, r.id); return RECIPES[r.id].map((t, k) => `<i class="${hv[k] ? 'ok' : ''}" style="--ic:${TIERS[UNITS[t].tier].color}">${UNITS[t].name}${hv[k] ? '✓' : ''}</i>`).join('+') + (r.TT.wood ? ` <i class="${pl.wood >= r.TT.wood ? 'ok' : ''}">🪵${r.TT.wood}</i>` : '') + (r.TT.gold ? ` <i class="${pl.gold >= r.TT.gold ? 'ok' : ''}">💰${r.TT.gold}</i>` : ''); })()}</em></span></button>`).join('')}</div>` : '';
+      const mk = mine.length ? `<div class="ms-mks">${mine.map(r => `<button class="ms-mk${r.ok ? ' can' : ''}" data-a="recipe" data-id="${r.id}" style="--tc:${r.TT.color}" ${r.ok && play ? '' : 'disabled'}>${badge(r.id, 'mini')}<span><small>${r.TT.name} <i class="mk-dt ${r.dd.dtype === 'm' ? 'm' : 'p'}">${r.dd.dtype === 'm' ? '마뎀' : '물뎀'}</i></small><b>${r.dd.name} 조합</b><em>${(() => { const hv = RD.recipeHave(S, ME, r.id); return RECIPES[r.id].map((t, k) => `<i class="${hv[k] ? 'ok' : ''}" style="--ic:${TIERS[UNITS[t].tier].color}">${UNITS[t].name}${hv[k] ? '✓' : ''}</i>`).join('+') + (r.TT.wood ? ` <i class="${pl.wood >= r.TT.wood ? 'ok' : ''}">🪵${r.TT.wood}</i>` : '') + (r.TT.gold ? ` <i class="${pl.gold >= r.TT.gold ? 'ok' : ''}">💰${r.TT.gold}</i>` : ''); })()}</em></span></button>`).join('')}</div>` : '';
       const btns = `<div class="ms-btns">${mb('cmd', '홀드', '', { attrs: ' data-c="hold"', hot: us.every(o => o.order === 'hold') })}${mb('combine', '랜덤 조합', T.need && !d.excl ? `${haveN}/${T.need}` : '불가', { hot: can, off: !can || !play })}</div>`;
       return `<div class="ms-h"><span style="color:${T.color}">${T.name}</span> ${d.name} <span class="dt ${d.dtype === 'm' ? 'm' : 'p'}">${d.dtype === 'm' ? '마뎀' : '물뎀'}</span><small class="ms-n">${cnt}</small></div>` + stat + btns + '<!--CARD--><!--REC-->' + mk;
     }
