@@ -646,6 +646,25 @@ body:not(.m) .mh-gal { display: none; }
 .galback[hidden] { display: none; }
 .galback:not([hidden]) { position: absolute; z-index: 6; left: 8px; top: 8px; padding: 6px 12px; font-weight: 800; border-radius: 99px; background: rgba(6,16,24,0.85); }
 body.m .galback:not([hidden]) { top: calc(52px + env(safe-area-inset-top, 0px)); }
+
+.endcard { position: absolute; z-index: 40; top: 12px; left: 50%; transform: translateX(-50%); width: min(420px, calc(100% - 24px)); max-height: 70%; display: flex; flex-direction: column; gap: 8px; padding: 12px 14px; border-radius: 14px; background: rgba(8, 24, 34, 0.92); border: 1px solid rgba(255,255,255,0.15); box-shadow: 0 8px 30px rgba(0,0,0,0.5); color: #e6eef2; }
+.endcard[hidden] { display: none; }
+.endcard .ec-top { display: flex; align-items: center; justify-content: space-between; }
+.endcard .ec-top b { font-size: 20px; }
+.endcard .ec-top button { background: none; border: 1px solid rgba(255,255,255,0.2); color: #e6eef2; border-radius: 8px; width: 32px; height: 28px; cursor: pointer; }
+.endcard .ec-body { overflow: auto; display: flex; flex-direction: column; gap: 8px; }
+.endcard p { margin: 0; font-size: 13px; line-height: 1.5; color: #c6d4dc; }
+.endcard .ec-sub { font-size: 12px; color: #9fb4c0; margin-bottom: 4px; }
+.endcard .ec-list { display: flex; flex-wrap: wrap; gap: 4px; }
+.endcard .ec-u { display: inline-flex; align-items: center; gap: 4px; padding: 2px 7px 2px 2px; border-radius: 999px; border: 1.5px solid var(--tc); font-size: 12px; }
+.endcard .ec-u .mini { width: 24px; height: 24px; font-size: 12px; }
+.endcard .ec-u i { font-style: normal; color: var(--tc); font-weight: 700; }
+.endcard .ec-none { color: #9fb4c0; font-size: 12px; }
+.endcard #ecExit { padding: 10px; border-radius: 10px; font-weight: 700; font-size: 15px; cursor: pointer; }
+.endcard #ecExit:disabled { opacity: 0.55; cursor: default; font-size: 13px; }
+.endcard.min .ec-body { display: none; }
+.endcard.min { gap: 6px; }
+body.m .endcard { top: 64px; }
 </style>
 </head><body>
 <div class="wrap">
@@ -681,6 +700,11 @@ body.m .galback:not([hidden]) { top: calc(52px + env(safe-area-inset-top, 0px));
         <div class="ms-body" id="msBody"></div>
       </div>
       <div class="mrotate" id="mrotate"><div>📱↻<b>세로로 돌려 주세요</b><small>이 게임은 휴대폰을 세로로 들고 하는 화면이에요</small></div></div>
+      <div class="endcard" id="endCard" hidden role="dialog" aria-label="게임 결과">
+        <div class="ec-top"><b id="ecTitle"></b><button id="ecHide" aria-label="접기/펴기">▾</button></div>
+        <div class="ec-body"><p id="ecText"></p><div id="ecRoster"></div></div>
+        <button id="ecExit" class="primary">나가기</button>
+      </div>
       <div class="overlay" id="ov">
         <div class="card">
           <h2 id="ovTitle">출항 준비</h2>
@@ -1011,7 +1035,16 @@ const RD = (() => {
   ];
   const CHEST = { name: '난파선 보물상자', hpMul: 60, armor: 10, reward: { draws: 1, wood: 1 } };
 
-  function waveInfo(w) {
+  // 10웨이브 구간마다 몬스터 이름·생김새가 바뀜 (1~10, 11~20, 21~30, 31~40)
+  const SEG_NAMES = {
+    normal: ['갯벌 게딱지', '산호 해파리', '심해 아귀', '유령 선원'],
+    armored: ['껍데기 소라게', '철갑 바다거북', '강철 가재', '저주받은 갑옷'],
+    fast: ['물보라 정령', '번개 날치', '폭풍 정령', '망령 바람'],
+    boss: ['붉은 크라켄', '늪지 히드라', '심연의 군주', '대해의 재앙 리바이어던'],
+  };
+  const segOf = (w) => Math.max(0, Math.min(3, Math.floor((w - 1) / 10)));
+  function waveInfo(w) { const wi = waveInfo0(w); wi.seg = segOf(w); wi.name = SEG_NAMES[wi.kind][wi.seg]; return wi; }
+  function waveInfo0(w) {
     // mres: 마법 저항. 철갑은 마법에 약하고, 쾌속(정령)은 물리에 약함
     if (w % 10 === 0) return { kind: 'boss', name: '보스', count: 1, hp: 1, armor: 12 + w * 3, mres: Math.floor((12 + w * 3) * 0.85), speed: 0.7 };
     if (w % 10 === 5) return { kind: 'armored', name: '철갑', count: 20, hp: 1.7, armor: 20 + w * 3, mres: Math.floor(w * 0.6), speed: 0.8 };
@@ -1900,7 +1933,7 @@ const RD = (() => {
   }
 
   return { WORLD, LANE, GEO, STORY, PCOLORS, PNAMES, CFG, TIERS, UNITS, RECIPES, BY_TIER, STORIES, CHEST, DRAW_POOL,
-    create, dispatch, step, combinable, recipeUnits, recipeHave, usesOf, unitById, pathPos, hpFor, isBossWave, waveInfo,
+    create, dispatch, step, combinable, recipeUnits, recipeHave, usesOf, unitById, pathPos, hpFor, isBossWave, waveInfo, segOf, SEG_NAMES,
     dmgMul, spdMul, upTrackOf, SHIPS, globalAtk, auraAspd, countOf, nextReq, wispSpots, PADS, STATIONS, ISLAND, zoneOf, zoneAt, isFree, deckBox };
 })();
 if (typeof module !== 'undefined') module.exports = RD;
@@ -2294,10 +2327,11 @@ window.RENDER2D = (() => {
     const WH = window.RDGAL ? window.RDGAL.y1 + 30 : WORLD.h; // 맨 아래 조합 광장까지 내려갈 수 있음
     v.y = hh * 2 >= WH ? WH / 2 : Math.max(hh, Math.min(WH - hh, v.y));
   }
+  // 10웨이브 구간마다 몬스터 색이 바뀜 (게딱지 → 해파리 → 아귀 → 유령)
+  const SEG_PAL = { normal: [[18, 78, 56], [320, 80, 72], [222, 55, 42], [140, 30, 82]], armored: [[28, 45, 55], [120, 22, 45], [8, 55, 45], [250, 18, 42]], fast: [[195, 85, 66], [52, 95, 58], [262, 80, 66], [150, 70, 78]] };
   function monColor(kind, wave) {
-    if (kind === 'armored') return '#9aa6b2';
-    if (kind === 'fast') return `hsl(${(20 + wave * 9) % 60 + 10} 85% 60%)`;
-    return `hsl(${(190 + wave * 23) % 360} 55% 58%)`;
+    const sg = Math.max(0, Math.min(3, Math.floor((wave - 1) / 10))), P = (SEG_PAL[kind] || SEG_PAL.normal)[sg], h = (P[0] + ((wave - 1) % 10) * 3) % 360;
+    return `hsl(${h} ${P[1]}% ${P[2]}%)`;
   }
 
   // ---- 유틸 ----
@@ -2744,6 +2778,12 @@ window.RENDER2D = (() => {
     const sq = 1 + wob * (m.kind === 'fast' ? 0.05 : 0.1);
     ctx.fillStyle = 'rgba(0,0,0,0.35)'; ctx.beginPath(); ctx.ellipse(x + 2, y + 2, R * 1.1, R * 0.4, 0, 0, 7); ctx.fill();
     if (m.kind === 'fast') { ctx.strokeStyle = col; ctx.globalAlpha = 0.35; ctx.lineWidth = 2; const b = pathBack(m); for (let k = 1; k <= 3; k++) { ctx.beginPath(); ctx.moveTo(x + b.x * k * 6, y - R * 0.7 + b.y * k * 6); ctx.lineTo(x + b.x * (k * 6 + 7), y - R * 0.7 + b.y * (k * 6 + 7)); ctx.stroke(); } ctx.globalAlpha = 1; }
+    const sg = Math.max(0, Math.min(3, Math.floor(((m.wave || 1) - 1) / 10))), sw = Math.sin(clock * 6 + m.id); // 구간별 생김새
+    ctx.lineCap = 'round';
+    if (sg === 1) { ctx.strokeStyle = col; ctx.lineWidth = 2.2; for (let k = -2; k <= 2; k++) { ctx.beginPath(); ctx.moveTo(x + k * R * 0.32, y - R * 0.2); ctx.quadraticCurveTo(x + k * R * 0.38 + sw * 3, y + R * 0.4, x + k * R * 0.3 - sw * 2, y + R * 0.75); ctx.stroke(); } }
+    if (sg === 3) { ctx.save(); ctx.globalAlpha = 0.55; ctx.fillStyle = col; ctx.beginPath(); ctx.moveTo(x - R * 0.8, y - R * 0.5); ctx.quadraticCurveTo(x + sw * 4, y + R * 0.9, x + R * 0.8, y - R * 0.5); ctx.fill(); ctx.restore(); }
+    if (m.kind === 'fast') { ctx.fillStyle = col; for (const sd of [-1, 1]) { ctx.beginPath(); ctx.moveTo(x + sd * R * 0.7, y - R); ctx.lineTo(x + sd * (R * 1.6 + sw * 2), y - R * 1.5); ctx.lineTo(x + sd * R * 0.9, y - R * 0.5); ctx.closePath(); ctx.fill(); ctx.strokeStyle = ink; ctx.lineWidth = 1; ctx.stroke(); } }
+    if (sg === 3) ctx.globalAlpha = 0.85;
     const hi = m.kind === 'armored' ? '#e8eef4' : col.replace(/(\d+)%\)$/, (q, l) => `${Math.min(88, +l + 22)}%)`);
     const g = ctx.createRadialGradient(x - R * 0.35, y - R * 1.2, 1, x, y - R * 0.7, R * 1.3); g.addColorStop(0, hi); g.addColorStop(1, col);
     ctx.fillStyle = g; ctx.beginPath(); ctx.ellipse(x, y - R * 0.75 / sq, R * sq, R * 0.85 / sq, 0, 0, 7); ctx.fill(); ctx.strokeStyle = m.stunT > 0 ? '#ffffff' : ink; ctx.lineWidth = 2; ctx.stroke();
@@ -2751,6 +2791,13 @@ window.RENDER2D = (() => {
     ctx.fillStyle = 'rgba(255,255,255,0.55)'; ctx.beginPath(); ctx.ellipse(x - R * 0.35, y - R * 1.15, R * 0.3, R * 0.16, -0.5, 0, 7); ctx.fill();
     ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.ellipse(x - R * 0.3, y - R * 0.75, R * 0.2, R * 0.25, 0, 0, 7); ctx.ellipse(x + R * 0.3, y - R * 0.75, R * 0.2, R * 0.25, 0, 0, 7); ctx.fill();
     ctx.fillStyle = ink; ctx.beginPath(); ctx.arc(x - R * 0.26, y - R * 0.72, R * 0.1, 0, 7); ctx.arc(x + R * 0.34, y - R * 0.72, R * 0.1, 0, 7); ctx.fill();
+    ctx.globalAlpha = 1;
+    if (sg === 0) { ctx.fillStyle = ink; ctx.strokeStyle = ink; ctx.lineWidth = 1.5; for (const sd of [-1, 1]) { const cx = x + sd * (R * 1.25), cy = y - R * 0.55 + sw * 1.5; ctx.beginPath(); ctx.moveTo(x + sd * R * 0.8, y - R * 0.5); ctx.lineTo(cx, cy); ctx.stroke(); ctx.fillStyle = col; ctx.beginPath(); const a0 = (sd > 0 ? 0 : Math.PI) + 0.55; ctx.arc(cx, cy, R * 0.34, a0, a0 + Math.PI * 2 - 1.1); ctx.lineTo(cx, cy); ctx.fill(); ctx.stroke(); } }
+    if (sg === 2) { ctx.strokeStyle = ink; ctx.lineWidth = 1.6; ctx.beginPath(); ctx.moveTo(x, y - R * 1.5); ctx.quadraticCurveTo(x + R * 0.2, y - R * 2.4, x + R * 0.8 + sw * 2, y - R * 2.1); ctx.stroke(); ctx.save(); ctx.globalCompositeOperation = 'lighter'; ctx.fillStyle = 'rgba(255,240,140,0.9)'; ctx.beginPath(); ctx.arc(x + R * 0.8 + sw * 2, y - R * 2.1, 3.2, 0, 7); ctx.fill(); ctx.restore();
+      ctx.fillStyle = '#fff'; for (let k = -2; k <= 2; k++) { ctx.beginPath(); ctx.moveTo(x + k * R * 0.16 - 1.5, y - R * 0.38); ctx.lineTo(x + k * R * 0.16, y - R * 0.18); ctx.lineTo(x + k * R * 0.16 + 1.5, y - R * 0.38); ctx.fill(); } }
+    if (sg === 3) { ctx.fillStyle = '#2a1a3a'; for (const sd of [-1, 1]) { ctx.beginPath(); ctx.moveTo(x + sd * R * 0.35, y - R * 1.45); ctx.quadraticCurveTo(x + sd * R * 0.75, y - R * 1.9, x + sd * R * 0.6, y - R * 2.1); ctx.lineTo(x + sd * R * 0.15, y - R * 1.55); ctx.fill(); } }
+    if (m.kind === 'armored' && sg >= 2) { ctx.fillStyle = sg === 3 ? '#3a2a4a' : '#8a2a1a'; for (let k = -1; k <= 1; k++) { ctx.beginPath(); ctx.moveTo(x + k * R * 0.4 - 3, y - R * 1.6); ctx.lineTo(x + k * R * 0.45, y - R * 2.15); ctx.lineTo(x + k * R * 0.4 + 3, y - R * 1.6); ctx.fill(); } }
+    ctx.lineCap = 'butt';
     if (m.slowPct > 0) { ctx.strokeStyle = '#9fe3ff'; ctx.lineWidth = 2; ctx.beginPath(); ctx.ellipse(x, y - R * 0.75, R + 2.5, R * 0.85 + 2.5, 0, 0, 7); ctx.stroke(); }
     if (m.shred > 0 && m.kind !== 'armored') { ctx.fillStyle = '#8ee05a'; ctx.beginPath(); ctx.arc(x + R - 1, y - R * 1.5, 2.4, 0, 7); ctx.fill(); }
     if (m.hitT > 0) { ctx.save(); ctx.globalCompositeOperation = 'lighter'; ctx.fillStyle = 'rgba(255,255,255,0.5)'; ctx.beginPath(); ctx.ellipse(x, y - R * 0.75, R, R * 0.85, 0, 0, 7); ctx.fill(); ctx.restore(); }
@@ -2983,7 +3030,7 @@ window.RENDER = window.RENDER2D;
     S = RD.create((Date.now() ^ (Math.random() * 1e9)) >>> 0, 1, diffSel);
     selIds = []; fx = []; parts = []; texts = []; anim = {}; paused = false; started = true; banner = null; tmode = null;
     for (const k in groups) delete groups[k];
-    $('ov').hidden = true; bookSig = ''; supplySig = '';
+    $('ov').hidden = true; $('endCard').hidden = true; bookSig = ''; supplySig = '';
     R.reset && R.reset();
     drainEvents(); myLaneView();
     say('선원 5명이 승선했습니다. 갑판의 포탈 칸으로 스토리존에 건너갈 수 있어요.');
@@ -3393,12 +3440,16 @@ window.RENDER = window.RENDER2D;
         case 'chestDown': ring(ev.x, ev.y, '#f4bf3c', 80, 0.6, true); showBanner('보물상자 획득', '#f4bf3c', fmtReward(ev.reward)); say(`보물상자 격파! ${fmtReward(ev.reward)}`); break;
         case 'boss': { const g = GEO[ME]; lastAlert = { x: g.x0, y: g.y0 }; break; }
         case 'death': if (ev.p === ME) say(`라인 몬스터 70마리 초과! 데스 카운트 ${ev.left}`); break;
+        case 'out':
+          if (ev.p === ME) { if (S.phase === 'play') { showBanner('탈락', '#ff6a5c', '다른 선장들의 항해를 구경할 수 있어요'); selIds = []; showEndCard('탈락했어요', `${ev.why}. 남은 선장들이 항해 중이에요 · 화면을 움직여 구경할 수 있어요.`, '#ff6a5c', false); } }
+          else { say(`P${ev.p + 1} ${PNAMES[ev.p] || ''} 탈락: ${ev.why}`); showBanner(`P${ev.p + 1} 탈락`, '#ff9a6a', '그 라인 몬스터는 사라지고, 남은 선장들이 계속 항해해요'); }
+          break;
         case 'wave': {
           const wi = RD.waveInfo(ev.wave);
-          const sub = { boss: '60초 안에 처치하세요', armored: '방어력이 높습니다 · 방깎 선원이 활약', fast: '빠르게 달립니다 · 감속·기절이 활약', normal: '선원 2명 승선' }[wi.kind];
+          const sub = (ev.wave % 10 === 1 && ev.wave > 1 ? '새로운 바다 · 몬스터가 바뀌었어요 · ' : '') + { boss: '60초 안에 처치하세요', armored: '방어력이 높습니다 · 방깎 선원이 활약', fast: '빠르게 달립니다 · 감속·기절이 활약', normal: '선원 2명 승선' }[wi.kind];
           const req = RD.nextReq(S);
           const extra = req && req.wave - ev.wave <= 3 ? ` · ${req.wave}웨이브까지 스토리 ${req.need}개 필요` : '';
-          showBanner(`${ev.wave}웨이브${wi.kind === 'normal' ? '' : ' · ' + wi.name}`, wi.kind === 'boss' ? '#ff6a5c' : wi.kind === 'normal' ? '#e6eef2' : '#9fe3ff', sub + extra);
+          showBanner(`${ev.wave}웨이브 · ${wi.kind === 'boss' ? '보스 ' : ''}${wi.name}`, wi.kind === 'boss' ? '#ff6a5c' : wi.kind === 'normal' ? '#e6eef2' : '#9fe3ff', sub + extra);
           break;
         }
       }
@@ -3582,7 +3633,7 @@ window.RENDER = window.RENDER2D;
     if (selB) html = stationHtml(selB, pl, play);
     else if (mon) {
       const isS = mon.kind === 'story' || mon.kind === 'chest';
-      const name = mon.kind === 'story' ? `${mon.idx + 1}. ${STORIES[mon.idx].name}` : mon.kind === 'chest' ? '난파선 보물상자' : mon.boss ? `${mon.wave}웨이브 보스` : `${mon.wave}웨이브 ${RD.waveInfo(mon.wave).name} 몬스터`;
+      const name = mon.kind === 'story' ? `${mon.idx + 1}. ${STORIES[mon.idx].name}` : mon.kind === 'chest' ? '난파선 보물상자' : mon.boss ? `${mon.wave}웨이브 보스 · ${RD.waveInfo(mon.wave).name}` : `${mon.wave}웨이브 ${RD.waveInfo(mon.wave).name}`;
       const st = [mon.slowPct > 0 ? `감속 ${Math.round(mon.slowPct * 100)}%` : '', mon.stunT > 0 ? '기절' : '', mon.shred > 0 ? `방깎 -${Math.round(mon.shred)}` : ''].filter(Boolean).join(' · ');
       html = `<div class="name">${name}</div>
         <div class="meter mon"><i style="width:${Math.max(0, mon.hp / mon.maxHp * 100).toFixed(1)}%"></i></div>
@@ -4057,7 +4108,7 @@ window.RENDER = window.RENDER2D;
     for (const c of cmds) NET.known.set(c[0], c);
     S = state; S.events.length = 0; S.phase = S.phase === 'preview' ? 'play' : S.phase;
     selIds = []; fx = []; parts = []; texts = []; anim = {}; paused = false; started = true; banner = null; tmode = null; acc = 0;
-    $('ov').hidden = true; bookSig = ''; supplySig = ''; R.reset && R.reset(); myLaneView();
+    $('ov').hidden = true; $('endCard').hidden = true; bookSig = ''; supplySig = ''; R.reset && R.reset(); myLaneView();
     say(NET.spectator ? '관전 중이에요.' : `실시간 ${slots.length}인 게임 · 나는 P${ME + 1} ${PNAMES[ME]}`);
     showBanner('출항!', PCOLORS[ME], `${slots.length}명이 함께 출항합니다 · 나는 P${ME + 1}`);
   }
@@ -4540,6 +4591,7 @@ window.RENDER = window.RENDER2D;
     requestAnimationFrame(frame);
   }
   function endGame() {
+    if (endedFor === S) return; endedFor = S;
     if (document.pointerLockElement) document.exitPointerLock?.();
     const won = S.phase === 'won';
     $('ovTitle').textContent = won ? '항해 성공!' : '배가 침몰했습니다';
@@ -4547,9 +4599,25 @@ window.RENDER = window.RENDER2D;
     $('ovText').textContent = won ? `40웨이브를 모두 막아냈습니다. 스토리 ${S.storyIdx}개 격파, 처치 ${S.players[ME].kills}마리.${cc ? ` 클리어 ${myClears()}회째!${cc.up ? ` 칭호 승급: ${cc.after.name}!` : ` ${cc.after.nextName}까지 ${cc.after.next}회`}` : ''}` : `${S.lostReason}. ${S.wave}웨이브, 스토리 ${S.storyIdx}개 격파.`;
     if (cc && cc.up) showBanner('승급!', cc.after.color, `새 칭호: ${cc.after.name}`);
     $('ovHow').hidden = true; $('startBtn').textContent = '다시 출항';
-    $('ov').hidden = false;
-    if (NET.room) { $('ovText').textContent += NET.host ? ' 방장은 다시 출항할 수 있어요.' : ' 방장이 다시 출항하길 기다려요.'; renderLobby(); }
+    if (NET.room) $('ovText').textContent += NET.host ? ' 방장은 다시 출항할 수 있어요.' : ' 방장이 다시 출항하길 기다려요.';
+    // 바로 출항 준비로 돌아가지 않고: 결과 카드를 띄워 두고 맵을 구경하다가 '나가기'로 나감
+    showEndCard(won ? '항해 성공!' : '배가 침몰했습니다', $('ovText').textContent, won ? '#f4bf3c' : '#ff6a5c', true);
   }
+  let endedFor = null;
+  function rosterHtml(p) {
+    const cnt = {}; for (const u of S.units) if (u.owner === p) cnt[u.type] = (cnt[u.type] || 0) + 1;
+    const list = Object.keys(cnt).sort((a, b) => UNITS[b].tier - UNITS[a].tier || cnt[b] - cnt[a]);
+    if (!list.length) return '<small class="ec-none">남은 선원이 없어요</small>';
+    return list.slice(0, 14).map(t => `<span class="ec-u" style="--tc:${TIERS[UNITS[t].tier].color}">${badge(t, 'mini')}<b>${UNITS[t].name}</b>${cnt[t] > 1 ? `<i>×${cnt[t]}</i>` : ''}</span>`).join('') + (list.length > 14 ? `<small class="ec-none">외 ${list.length - 14}종</small>` : '');
+  }
+  function showEndCard(title, text, color, canExit) {
+    const c = $('endCard'); if (!c) return;
+    $('ecTitle').textContent = title; $('ecTitle').style.color = color; $('ecText').textContent = text;
+    $('ecRoster').innerHTML = `<div class="ec-sub">내 선원 · 처치 ${S.players[ME] ? S.players[ME].kills : 0}마리</div><div class="ec-list">${rosterHtml(ME)}</div>`;
+    $('ecExit').disabled = !canExit; $('ecExit').textContent = canExit ? '나가기' : '게임이 끝나면 나갈 수 있어요';
+    c.classList.remove('min'); c.hidden = false;
+  }
+  function exitToLobby() { $('endCard').hidden = true; $('ov').hidden = false; if (NET.room) renderLobby(); }
 
   // 시험용: 콘솔이나 성능 측정에서 씀
   try { if (localStorage.getItem('rd_recfold')) document.getElementById('mrec')?.classList.add('fold'); } catch (e) {}
@@ -4564,6 +4632,7 @@ window.RENDER = window.RENDER2D;
   window.__stress = (n = 200) => { if (!S) return; const G = GEO[ME], types = Object.keys(UNITS); for (let k = 0; k < n; k++) { const t = types[k % types.length]; S.units.push({ id: 50000 + S.nextId++, owner: ME, type: t, x: G.deck.x0 + 20 + (k * 37) % (G.deck.x1 - G.deck.x0 - 40), y: G.deck.y0 + 20 + (k * 53) % (G.deck.y1 - G.deck.y0 - 40), tx: 0, ty: 0, ox: 0, oy: 0, order: 'idle', cd: 0, rapidT: 0, rapidMul: 1, moving: false, face: 1 }); } };
   window.claude?.hot?.snapshot?.(() => ({ S, selIds, started, view: { x: view.x, y: view.y, z: view.z } }));
   function boot(data) {
+    $('ecExit').addEventListener('click', exitToLobby); $('ecHide').addEventListener('click', () => $('endCard').classList.toggle('min'));
     renderDiffs(); profWire(); mpWire(); mpInit(); installInit();
     const mm = document.getElementById('mMenu'), mbk = document.getElementById('mBack');
     // ☰ → 조합표 시트 (조합표 부분을 시트로 옮겨 보여 주고, 닫으면 제자리로)
