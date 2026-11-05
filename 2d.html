@@ -1612,15 +1612,15 @@ const RD = (() => {
       }
       case 'arrange': { // 정렬: 갑판 위 선원을 등급(높은 순)·종류별로 줄 세움
         const D = GEO[p].deck, top = p % 2 === 0, left = p < 2, box = deckBox(p);
-        const us = s.units.filter(u => u.owner === p && inBox(box, u.x, u.y) && UNITS[u.type].move !== 'swim');
+        const us = s.units.filter(u => u.owner === p && inBox(box, u.x, u.y)); // 배·수영 선원도 갑판 위에 있으면 함께 정렬
         if (!us.length) return false;
-        us.sort((q, r) => UNITS[r.type].tier - UNITS[q.type].tier || (q.type < r.type ? -1 : q.type > r.type ? 1 : 0) || q.id - r.id);
+        const shp = u => UNITS[u.type].ship ? 1 : 0; us.sort((q, r) => shp(q) - shp(r) || UNITS[r.type].tier - UNITS[q.type].tier || (q.type < r.type ? -1 : q.type > r.type ? 1 : 0) || q.id - r.id);
         const xa = left ? D.x0 + 20 : D.x0 + 52, xb = left ? D.x1 - 52 : D.x1 - 20; // 포탈 쪽은 비움
         const ya = top ? D.y0 + 24 : D.y1 - 24, yb = top ? D.y1 - 66 : D.y0 + 66; // 건물 줄은 비움
         const H = Math.abs(yb - ya), W = xb - xa;
         // 등급이 높을수록 덩치가 커서 간격을 넓힘. 자리가 모자라면 전체 간격을 줄임
         let f = 1, rowsL;
-        const build = (brk) => { const R = []; let cur = null; for (const u of us) { const t = UNITS[u.type].tier, sx = (24 + t * 3.5) * f, cap = Math.max(1, Math.floor(W / sx) + 1); if (!cur || cur.n >= cur.cap || (brk && cur.t !== t)) { cur = { t, sx, sy: (32 + t * 4) * f, cap, n: 0, us: [] }; R.push(cur); } cur.us.push(u); cur.n++; } return R; };
+        const build = (brk) => { const R = []; let cur = null; for (const u of us) { const sh = !!UNITS[u.type].ship, t = sh ? 'ship' : UNITS[u.type].tier, sx = (sh ? 62 : 24 + t * 3.5) * f, cap = Math.max(1, Math.floor(W / sx) + 1); if (!cur || cur.n >= cur.cap || ((brk || sh) && cur.t !== t)) { cur = { t, sx, sy: (sh ? 56 : 32 + t * 4) * f, cap, n: 0, us: [] }; R.push(cur); } cur.us.push(u); cur.n++; } return R; };
         const hOf = R => R.reduce((a, r) => a + r.sy, 0) - (R.length ? R[R.length - 1].sy : 0);
         for (;;) { rowsL = build(true); if (hOf(rowsL) <= H) break; rowsL = build(false); if (hOf(rowsL) <= H || f < 0.5) break; f -= 0.06; }
         let y = ya;
@@ -3278,10 +3278,10 @@ window.RENDER = window.RENDER2D;
     else cyc = kinds.length > 1 ? { i: 0 } : null;
     if (cyc) { Object.assign(cyc, { t: now, x: sp.x, y: sp.y }); if (!d.ctrl && !d.shift) say(`여기 겹친 선원 ${kinds.length}종 (${cyc.i + 1}/${kinds.length}) · 같은 자리를 다시 누르면 다음 선원`); }
     if (u) {
-      if ((now - lastClick.t < 320 && lastClick.id === u.id) || d.ctrl) selIds = S.units.filter(o => o.owner === ME && o.type === u.type && onScreen(o.x, o.y)).map(o => o.id);
+      if ((now - lastClick.t < 350 && (lastClick.id === u.id || (lastClick.type === u.type && Math.hypot(lastClick.x - sp.x, lastClick.y - sp.y) < 30))) || d.ctrl) selIds = S.units.filter(o => o.owner === ME && o.type === u.type && onScreen(o.x, o.y)).map(o => o.id);
       else if (d.shift) selIds = selIds.includes(u.id) ? selIds.filter(i => i !== u.id) : [...selIds, u.id];
       else selIds = [u.id];
-      lastClick = { t: now, id: u.id };
+      lastClick = { t: now, id: u.id, type: u.type, x: sp.x, y: sp.y };
       selMon = null;
     } else if (stationAtScreen(sp)) { selectStation(stationAtScreen(sp)); }
     else if (selIds.length && d.touch) { if (!attack(enemyAtScreen(sp))) order('move', w); }
@@ -4714,6 +4714,7 @@ window.RENDER = window.RENDER2D;
   window.__tse = (e) => toScreenEv(e);
   window.__view = view;
   window.__selU = (id) => { selIds = [id]; selMon = null; mcardSig = null; };
+  window.__setSel = (a) => { selIds = a.slice(); selMon = null; mcardSig = null; };
   window.__selM = (id) => { selMon = id; selIds = []; mcardSig = null; };
   window.__ts = (x, y) => toScreen(x, y, 12); window.__sel = () => selIds.map(i => S.units.find(u => u.id === i)?.type);
   window.__net = () => NET;
