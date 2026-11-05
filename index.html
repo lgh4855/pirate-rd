@@ -1222,6 +1222,14 @@ const RD = (() => {
                skill: { name: '창세의 해일', type: 'tsunami', chance: 0.12, mul: 4, slow: [0.7, 3], desc: '12% 확률로 넓은 범위 대해일' } },
     crown:   { name: '전설의 왕관', tier: 8, glyph: '관', look: 'king', accent: '#fff3a8', roles: ['단일', '보스킬러', '버프'], dmg: 1320, cd: 0.4, range: 330, kind: 'single', crit: [0.4, 3], bossMul: 3, aura: { globalAtk: 0.2 },
                skill: { name: '왕관의 심판', type: 'execute', chance: 0.14, mul: 15, nova: 160, desc: '전체 공격력 +20%, 14% 확률로 15배 심판' } },
+    stormgod:{ name: '폭풍신 라이진', tier: 8, glyph: '뢰', look: 'mage', accent: '#ffe066', roles: ['광역', '기절'], dmg: 2350, cd: 0.75, range: 340, kind: 'chain', n: 14, stun: [0.25, 0.7],
+               skill: { name: '신뢰 강림', type: 'storm', chance: 0.14, n: 30, mul: 2.6, stun: 0.8, desc: '14% 확률로 낙뢰 30발 + 기절' } },
+    voidqueen:{ name: '공허의 여제', tier: 8, glyph: '여', look: 'mage', accent: '#b07aff', roles: ['다중', '마방깎', '기절'], dmg: 1260, cd: 0.38, range: 330, kind: 'multi', n: 8, mshred: [30, 100, 3], stun: [0.12, 0.6],
+               skill: { name: '공허 붕괴', type: 'timestop', chance: 0.08, dur: 3.5, desc: '8% 확률로 넓은 범위 3.5초 정지' } },
+    chronos: { name: '시공의 지배자', tier: 8, glyph: '공', look: 'mage', accent: '#e6d3ff', roles: ['단일', '체력%', '방깎'], dmg: 3200, cd: 0.7, range: 330, kind: 'single', shred: [20, 80, 3],
+               skill: { name: '시간 역류', type: 'percent', chance: 0.12, cur: 0.1, mul: 8, desc: '12% 확률로 8배 + 현재 체력 10% 피해' } },
+    sunblade:{ name: '태양검 신', tier: 8, glyph: '양', look: 'king', accent: '#ff9a1a', roles: ['광역', '보스킬러'], dmg: 3600, cd: 0.6, range: 320, kind: 'splash', r: 120, bossMul: 2.4,
+               skill: { name: '태양 일섬', type: 'execute', chance: 0.14, mul: 16, nova: 180, desc: '14% 확률로 16배 일섬 (넓은 주변 피해)' } },
 
     // ---- 배 (해적선으로 만드는 히든 배 · 바다를 항해할 수 있음) ----
     pship:   { name: '해적선', tier: 1, excl: true, ship: true, move: 'swim', glyph: '선', look: 'cannon', accent: '#8b5a2b', roles: ['광역'], dmg: 45, cd: 1.3, range: 210, kind: 'splash', r: 60,
@@ -1325,6 +1333,10 @@ const RD = (() => {
     eternity:  ['chrono', 'glacier', 'rune'],
     worldsea:  ['blackpearl', 'abyss', 'glacier', 'dancer'],
     crown:     ['blackpearl', 'king', 'saint'],
+    stormgod:  ['blackpearl', 'kraken', 'thunder'],
+    voidqueen: ['blackpearl', 'void', 'reaper'],
+    chronos:   ['blackpearl', 'chrono', 'alchemy'],
+    sunblade:  ['blackpearl', 'bladegod', 'flame'],
     // 모든 히든·전설 선원이 최소 1개 조합의 핵심 재료가 되도록 추가
     ghostking: ['phantom', 'ghost', 'shadow'],
     dragonq:   ['phoenix', 'dragon', 'dancer'],
@@ -2065,6 +2077,10 @@ window.DESIGNS = {
   eternity:{ outfit: '#c8b8f0', pants: '#4a3a7a', skin: '#f2dcc8', hair: '#ffffff', hairStyle: 'long', hat: 'wizard', hatC: '#e6d3ff', weapon: 'clockstaff', extras: ['halo', 'longbeard', 'cape'], cape: '#8a78c8', build: 1 },
   // ---- 초월 ----
   worldsea:{ outfit: '#4ad8f0', pants: '#0a5a7a', skin: '#c8f4ff', hair: '#7af0ff', hairStyle: 'long', hat: 'coralcrown', hatC: '#7af0ff', weapon: 'wateror', extras: ['halo', 'cape', 'starry'], cape: '#1a8ab0', build: 1.15 },
+  stormgod:{ outfit: '#2a2a5a', pants: '#14143a', skin: '#e8d8c8', hair: '#ffe066', hairStyle: 'wild', hat: 'viking', hatC: '#ffe066', weapon: 'thunderblade', extras: ['cape', 'halo', 'shoulderpads'], cape: '#3a3a8a', build: 1.3 },
+  voidqueen:{ outfit: '#2a0e4a', pants: '#140628', skin: '#e8d0f0', hair: '#b07aff', hairStyle: 'long', hat: 'tiara', hatC: '#b07aff', weapon: 'moonstaff', extras: ['cape', 'halo', 'starry'], cape: '#4a1a7a', build: 1.05 },
+  chronos: { outfit: '#d8c8ff', pants: '#3a2a6a', skin: '#f2dcc8', hair: '#ffffff', hairStyle: 'long', hat: 'laurel', hatC: '#ffe38a', weapon: 'clockstaff', extras: ['halo', 'cape', 'longbeard', 'monocle'], cape: '#7a68c8', build: 1.1 },
+  sunblade:{ outfit: '#ff9a1a', pants: '#5a1a0a', skin: '#e8b98c', hair: '#ffd23f', hairStyle: 'wild', hat: 'starcrown', hatC: '#ffd23f', weapon: 'goldkatana', extras: ['cape', 'halo', 'sash'], cape: '#c8281e', build: 1.25 },
   crown:   { outfit: '#fff8e0', pants: '#b08a2a', skin: '#e8b98c', hair: '#fff3a8', hairStyle: 'wild', hat: 'kingcrown', hatC: '#fff3a8', weapon: 'goldkatana', extras: ['cape', 'fur', 'halo', 'epaulets'], cape: '#ffd23f', build: 1.25 },
   // ---- 특별함 ----
   deckhand:  { outfit: '#c84a2a', pants: '#3a2a20', skin: '#e8b98c', hair: '#3a2a1a', hairStyle: 'short', hat: 'bandana', hatC: '#ffb07a', weapon: 'cutlass', extras: ['scarf'], build: 1.1 },
