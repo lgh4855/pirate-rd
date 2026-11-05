@@ -667,8 +667,23 @@ body.m .galback:not([hidden]) { top: calc(52px + env(safe-area-inset-top, 0px));
 body.m .endcard { top: 64px; }
 
 /* PC: 아래 조합 바(페이지 아래 조합표가 있음)와 확대/축소 버튼 묶음은 숨김 */
-body:not(.m) #mbar, body:not(.m) #mbPop { display: none !important; }
+body:not(.m) #mbar, body:not(.m) #mbPop, body.pc #mbar, body.pc #mbPop { display: none !important; }
 .zoom { display: none !important; }
+/* PC 창에서는 맵 안 지표·카드를 조금 크게 */
+body.pc .mhud { zoom: 1.55; }
+body.pc #mstat, body.pc #mrec, body.pc #mcard, body.pc .gal, body.pc .galback { zoom: 1.5; }
+body.pc .endcard { zoom: 1.3; }
+.mcard .mc-bar { height: 7px; border-radius: 4px; background: rgba(255,255,255,0.12); overflow: hidden; margin: 4px 0 6px; }
+.mcard .mc-bar i { display: block; height: 100%; background: #ff6a5c; }
+.mcard .mc-st { display: grid; grid-template-columns: 1fr 1fr; gap: 5px 14px; font-size: 11px; color: #9fb4c0; min-width: 230px; }
+.mcard .mc-st .hp { grid-column: 1 / -1; }
+.mcard .mc-st b { white-space: nowrap; }
+.mcard .mc-st span { display: flex; flex-direction: column; }
+.mcard .mc-st b { color: #e6eef2; font-size: 14px; }
+.mcard .mc-st i { font-style: normal; font-size: 10px; color: #7f97a5; }
+.mcard .mc-tip { margin-top: 6px; font-size: 11.5px; color: #ffd23f; }
+.mcard .mc-rw { margin-top: 4px; font-size: 11px; color: #c6d4dc; }
+.mcard .mc-hint { display: block; margin-top: 5px; font-size: 10.5px; color: #7f97a5; }
 </style>
 </head><body>
 <div class="wrap">
@@ -1171,6 +1186,14 @@ const RD = (() => {
                skill: { name: '황제의 칙령', type: 'execute', chance: 0.12, mul: 12, nova: 140, desc: '전체 공격력 +12%, 12% 확률로 12배 일격' } },
     stormlord:{ name: '폭풍의 군주', tier: 6, glyph: '군', look: 'mage', accent: '#ffe066', roles: ['광역', '기절'], dmg: 1970, cd: 0.8, range: 300, kind: 'chain', n: 10, stun: [0.2, 0.6],
                skill: { name: '만뢰', type: 'storm', chance: 0.12, n: 20, mul: 2.2, stun: 0.6, desc: '12% 확률로 낙뢰 20발 + 기절' } },
+    ghostking:{ name: '망령 함대왕', tier: 6, glyph: '혼', look: 'captain', accent: '#7affc8', roles: ['광역', '기절'], dmg: 1970, cd: 0.8, range: 300, kind: 'chain', n: 10, stun: [0.2, 0.6],
+               skill: { name: '망령 대함대', type: 'meteor', chance: 0.14, n: 14, r: 100, mul: 2.6, desc: '14% 확률로 유령 포탄 14발' } },
+    dragonq: { name: '천룡 무희', tier: 6, glyph: '염', look: 'mage', accent: '#ff8a3a', roles: ['단일', '보스킬러'], dmg: 1485, cd: 0.45, range: 300, kind: 'single', crit: [0.3, 3], bossMul: 2.7,
+               skill: { name: '용염 난무', type: 'execute', chance: 0.12, mul: 12, nova: 140, desc: '12% 확률로 12배 용의 불길 (주변 피해)' } },
+    starsage:{ name: '별바다 현자', tier: 6, glyph: '현', look: 'mage', accent: '#bfe3ff', roles: ['다중', '마방깎', '버프'], dmg: 1100, cd: 0.4, range: 300, kind: 'multi', n: 6, mshred: [20, 80, 3], aura: { globalAtk: 0.1 },
+               skill: { name: '유성우', type: 'meteor', chance: 0.12, n: 12, r: 90, mul: 2.4, desc: '전체 공격력 +10%, 12% 확률로 별똥별 12발' } },
+    fortress:{ name: '포격 요새 제독', tier: 6, glyph: '요', look: 'cannon', accent: '#d8343a', roles: ['광역', '방깎'], dmg: 4350, cd: 1.0, range: 320, kind: 'splash', r: 130, shred: [15, 60, 3],
+               skill: { name: '일제 포격', type: 'meteor', chance: 0.12, n: 12, r: 110, mul: 2.8, desc: '12% 확률로 포탄 12발 일제 사격' } },
     // ---- 불멸 (나무 7 · 1500골드) ----
     abyssgod:{ name: '심연의 신', tier: 7, glyph: '심', look: 'king', accent: '#1a8aff', roles: ['광역', '감속', '체력%'], dmg: 4350, cd: 1.0, range: 330, kind: 'splash', r: 150, slow: [0.55, 3],
                skill: { name: '대심연', type: 'tsunami', chance: 0.12, mul: 3, slow: [0.6, 3], desc: '12% 확률로 주변 넓은 범위에 대해일' } },
@@ -1178,6 +1201,14 @@ const RD = (() => {
                skill: { name: '태양 낙인', type: 'percent', chance: 0.1, cur: 0.08, mul: 10, desc: '전체 공격력 +15%, 10% 확률로 10배 + 현재 체력 8% 피해' } },
     eternity:{ name: '영겁의 시계공', tier: 7, glyph: '겁', look: 'mage', accent: '#e6d3ff', roles: ['다중', '기절', '마방깎'], dmg: 1130, cd: 0.4, range: 320, kind: 'multi', n: 7, stun: [0.15, 0.8], mshred: [25, 90, 3],
                skill: { name: '영겁 정지', type: 'timestop', chance: 0.08, dur: 3.2, desc: '8% 확률로 주변 넓은 범위 3.2초 정지' } },
+    whaleking:{ name: '고래왕 해신', tier: 7, glyph: '경', look: 'king', accent: '#e8e8f0', roles: ['광역', '감속', '버프'], dmg: 4350, cd: 1.0, range: 330, kind: 'splash', r: 150, slow: [0.55, 3], aura: { globalAtk: 0.08 },
+               skill: { name: '고래의 노래', type: 'tsunami', chance: 0.12, mul: 3, slow: [0.6, 3], desc: '전체 공격력 +8%, 12% 확률로 넓은 범위 대해일' } },
+    feastlord:{ name: '황금 연회 대선장', tier: 7, glyph: '잔', look: 'king', accent: '#ffd23f', roles: ['단일', '보스킬러', '버프'], dmg: 1485, cd: 0.45, range: 320, kind: 'single', crit: [0.35, 3], bossMul: 2.8, aura: { globalAtk: 0.15 },
+               skill: { name: '황금 만찬', type: 'percent', chance: 0.1, cur: 0.08, mul: 10, desc: '전체 공격력 +15%, 10% 확률로 10배 + 현재 체력 8% 피해' } },
+    skyark:  { name: '천공 방주 대주교', tier: 7, glyph: '궁', look: 'mage', accent: '#9ab4ff', roles: ['광역', '방깎', '마방깎'], dmg: 3900, cd: 1.0, range: 330, kind: 'splash', r: 150, shred: [20, 80, 3], mshred: [20, 80, 3],
+               skill: { name: '천공의 심판', type: 'storm', chance: 0.12, n: 18, mul: 2.4, stun: 0.5, desc: '12% 확률로 하늘의 번개 18발 + 기절' } },
+    sunfleet:{ name: '태양 함대 총독', tier: 7, glyph: '광', look: 'captain', accent: '#ffb000', roles: ['다중', '기절'], dmg: 1130, cd: 0.4, range: 320, kind: 'multi', n: 7, stun: [0.15, 0.8],
+               skill: { name: '태양 함대 돌격', type: 'execute', chance: 0.12, mul: 14, nova: 160, desc: '12% 확률로 14배 돌격 (주변 피해)' } },
     // ---- 초월 (나무 10 · 3000골드) ----
     worldsea:{ name: '세계의 바다', tier: 8, glyph: '해', look: 'king', accent: '#7af0ff', roles: ['광역', '감속', '체력%', '마방깎'], dmg: 3915, cd: 0.9, range: 340, kind: 'splash', r: 170, slow: [0.6, 3], mshred: [30, 100, 3],
                skill: { name: '창세의 해일', type: 'tsunami', chance: 0.12, mul: 4, slow: [0.7, 3], desc: '12% 확률로 넓은 범위 대해일' } },
@@ -1239,7 +1270,7 @@ const RD = (() => {
     // ---- 희귀함 = 특별함 + 특별함, 또는 특별함 + 안흔함 2개 ----
     gale:    ['deckhand', 'twin', 'twin'],
     shadow:  ['cutthroat', 'sniper'],
-    storm:   ['tidecaller', 'bomber'],
+    storm:   ['tidecaller', 'netter'],
     iron:    ['mortar', 'bomber', 'bomber'],
     curse:   ['chemist', 'frost'],
     marshal: ['quarter', 'sniper', 'twin'],
@@ -1286,6 +1317,15 @@ const RD = (() => {
     eternity:  ['chrono', 'glacier', 'rune'],
     worldsea:  ['blackpearl', 'abyss', 'glacier', 'dancer'],
     crown:     ['blackpearl', 'king', 'saint'],
+    // 모든 히든·전설 선원이 최소 1개 조합의 핵심 재료가 되도록 추가
+    ghostking: ['phantom', 'ghost', 'shadow'],
+    dragonq:   ['phoenix', 'dragon', 'dancer'],
+    starsage:  ['star', 'alchemy', 'rune'],
+    fortress:  ['galleon', 'outlaw', 'iron'],
+    whaleking: ['whale', 'hunter', 'storm'],
+    feastlord: ['galley', 'flame', 'brawler'],
+    skyark:    ['ark', 'witch', 'rune'],
+    sunfleet:  ['sunship', 'saint', 'gale'],
 
   };
   // ---- 이동 방식: 대부분 도보(자기 갑판·스토리존 안에서만, 포탈로 오감), 일부는 비행·수영으로 어디든 ----
@@ -2004,6 +2044,14 @@ window.DESIGNS = {
   emperor: { outfit: '#f4ecd8', pants: '#4a2a6a', skin: '#e8b98c', hair: '#1a1a1a', hairStyle: 'short', hat: 'kingcrown', hatC: '#ffe38a', weapon: 'greatsword', extras: ['cape', 'epaulets', 'mustache'], cape: '#6a2a8a', build: 1.2 },
   stormlord:{ outfit: '#2a3a7a', pants: '#14204a', skin: '#e8b98c', hair: '#f0f0f0', hairStyle: 'wild', hat: 'greathelm', hatC: '#ffe066', weapon: 'axe', extras: ['cape', 'shoulderpads'], cape: '#ffe066', build: 1.25 },
   // ---- 불멸 ----
+  ghostking:{ outfit: '#1e3a32', pants: '#0e1e1a', skin: '#bff0d8', hair: '#8af0c0', hairStyle: 'wild', hat: 'admiral', hatC: '#16221e', hatC2: '#7affc8', weapon: 'lantern', extras: ['ghostly', 'cape', 'epaulets'], cape: '#0e2a22', build: 1.25 },
+  dragonq: { outfit: '#c8401a', pants: '#3a0e08', skin: '#f2c8a0', hair: '#ff8a3a', hairStyle: 'long', hat: 'dragonskull', hatC: '#f4e2c0', weapon: 'fan', extras: ['cape', 'sash', 'halo'], cape: '#ff6a1a', build: 1.05 },
+  starsage:{ outfit: '#14143e', pants: '#0a0a24', skin: '#f8e8d8', hair: '#f4f0ff', hairStyle: 'long', hat: 'starcrown', hatC: '#bfe3ff', weapon: 'starwand', extras: ['starry', 'cape', 'longbeard'], cape: '#24246a', build: 1.1 },
+  fortress:{ outfit: '#7a1a1e', pants: '#2a0a0c', skin: '#d8a07a', hair: '#2a1a12', hairStyle: 'short', hat: 'bicorne', hatC: '#1a0a0a', hatC2: '#d8343a', weapon: 'bigcannon', extras: ['epaulets', 'shoulderpads', 'beard'], build: 1.4 },
+  whaleking:{ outfit: '#e8e8f0', pants: '#3a4a6a', skin: '#a8c8e8', hair: '#ffffff', hairStyle: 'wild', hat: 'coralcrown', hatC: '#e8e8f0', weapon: 'trident', extras: ['cape', 'longbeard', 'fur'], cape: '#3a5a8a', build: 1.45 },
+  feastlord:{ outfit: '#ffd23f', pants: '#6a2a0a', skin: '#e8b98c', hair: '#8a3a1a', hairStyle: 'short', hat: 'kingcrown', hatC: '#ffd23f', weapon: 'goldcutlass', extras: ['cape', 'apron', 'mustache'], cape: '#a8281e', build: 1.4 },
+  skyark:  { outfit: '#dfe6ff', pants: '#4a5a8a', skin: '#f2dcc8', hair: '#ffffff', hairStyle: 'long', hat: 'wizard', hatC: '#9ab4ff', weapon: 'tome', extras: ['halo', 'cape', 'longbeard'], cape: '#6a7aca', build: 1.1 },
+  sunfleet:{ outfit: '#ffb000', pants: '#5a2a0a', skin: '#e8b98c', hair: '#ff6a1a', hairStyle: 'wild', hat: 'admiral', hatC: '#ffb000', hatC2: '#fff2a0', weapon: 'thunderblade', extras: ['cape', 'epaulets', 'halo'], cape: '#c8281e', build: 1.25 },
   abyssgod:{ outfit: '#0e2a6a', pants: '#081838', skin: '#8ab8e8', hair: '#bfe3ff', hairStyle: 'long', hat: 'coralcrown', hatC: '#1a8aff', weapon: 'trident', extras: ['cape', 'halo', 'longbeard'], cape: '#0a1a4a', build: 1.4 },
   sunking: { outfit: '#ffb000', pants: '#5a2a0a', skin: '#e8b98c', hair: '#ff6a1a', hairStyle: 'wild', hat: 'starcrown', hatC: '#ffb000', weapon: 'goldcutlass', extras: ['cape', 'fur', 'halo'], cape: '#c8281e', build: 1.25 },
   eternity:{ outfit: '#c8b8f0', pants: '#4a3a7a', skin: '#f2dcc8', hair: '#ffffff', hairStyle: 'long', hat: 'wizard', hatC: '#e6d3ff', weapon: 'clockstaff', extras: ['halo', 'longbeard', 'cape'], cape: '#8a78c8', build: 1 },
@@ -2969,7 +3017,8 @@ window.RENDER = window.RENDER2D;
   const scrW = () => ROT ? window.innerHeight : window.innerWidth, scrH = () => ROT ? window.innerWidth : window.innerHeight;
   function layoutMode() { // 휴대폰이면 게임판이 화면 전체를 채우고, 화면 비율대로 보이는 범위가 바뀜
     applyRot();
-    const m = !!ROT || window.matchMedia('(max-width: 820px), (pointer: coarse) and (max-height: 520px)').matches || !!document.fullscreenElement; // PC도 전체 화면이면 같은 배치
+    const m = true; // PC도 휴대폰처럼 게임판이 창 전체를 채우고, 지표·버튼은 맵 안에 표시
+    document.body.classList.toggle('pc', !window.matchMedia('(pointer: coarse)').matches);
     if (m !== MOBILE) { MOBILE = m; document.body.classList.toggle('m', m); if (!m) document.body.classList.remove('m-menu'); moveInstall(); }
     let w = 720, h = 480;
     if (MOBILE) { const W = scrW() || 390, H = scrH() || 844; if (H >= W) { w = 480; h = Math.round(480 * H / W); } else { h = 440; w = Math.round(440 * W / H); } }
@@ -4347,8 +4396,10 @@ window.RENDER = window.RENDER2D;
       }).join('');
       const cnt = us.length > 1 ? `선택 ${us.length}명` : `${haveN}명 보유`;
       // 이 선원이 조합식에서 가장 높은 등급 재료인 조합을 버튼으로 보여 줌 (재료가 모자라면 흐리게, 필요한 재료 이름 표시)
-      const keyOf = id => RECIPES[id].reduce((b, t) => UNITS[t].tier > UNITS[b].tier ? t : b, RECIPES[id][0]);
-      const mine = RD.usesOf(u.type).filter(id => keyOf(id) === u.type).map(id => { const dd = UNITS[id], TT = TIERS[dd.tier]; return { id, dd, TT, ok: !!RD.recipeUnits(S, ME, id, u.id) && pl.wood >= (TT.wood || 0) && pl.gold >= (TT.gold || 0) }; }).sort((a, b) => (b.ok - a.ok) || (b.dd.tier - a.dd.tier)).slice(0, 5);
+      // 핵심 재료 = 조합식에서 등급이 가장 높은 재료들(같은 등급이면 모두, 히든·전설은 같은 급) + 해적선·블랙펄
+      const SPC = t => t === 'pship' || t === 'blackpearl', rk = t => UNITS[t].tier === 5 ? 4 : UNITS[t].tier;
+      const isKey = (id, t) => { if (SPC(t)) return true; const ing = RECIPES[id].filter(x => !SPC(x)), mx = Math.max(...ing.map(rk)); return rk(t) === mx; };
+      const mine = RD.usesOf(u.type).filter(id => isKey(id, u.type)).map(id => { const dd = UNITS[id], TT = TIERS[dd.tier]; return { id, dd, TT, ok: !!RD.recipeUnits(S, ME, id, u.id) && pl.wood >= (TT.wood || 0) && pl.gold >= (TT.gold || 0) }; }).sort((a, b) => (b.ok - a.ok) || (b.dd.tier - a.dd.tier)).slice(0, 5);
       const mk = mine.length ? `<div class="ms-mks">${mine.map(r => `<button class="ms-mk${r.ok ? ' can' : ''}" data-a="recipe" data-id="${r.id}" style="--tc:${r.TT.color}" ${r.ok && play ? '' : 'disabled'}>${badge(r.id, 'mini')}<span><small>${r.TT.name}</small><b>${r.dd.name} 조합</b><em>${(() => { const hv = RD.recipeHave(S, ME, r.id); return RECIPES[r.id].map((t, k) => `<i class="${hv[k] ? 'ok' : ''}" style="--ic:${TIERS[UNITS[t].tier].color}">${UNITS[t].name}${hv[k] ? '✓' : ''}</i>`).join('+') + (r.TT.wood ? ` <i class="${pl.wood >= r.TT.wood ? 'ok' : ''}">🪵${r.TT.wood}</i>` : '') + (r.TT.gold ? ` <i class="${pl.gold >= r.TT.gold ? 'ok' : ''}">💰${r.TT.gold}</i>` : ''); })()}</em></span></button>`).join('')}</div>` : '';
       const btns = `<div class="ms-btns">${mb('cmd', '홀드', '', { attrs: ' data-c="hold"', hot: us.every(o => o.order === 'hold') })}${mb('combine', '랜덤 조합', T.need && !d.excl ? `${haveN}/${T.need}` : '불가', { hot: can, off: !can || !play })}</div>`;
       return `<div class="ms-h"><span style="color:${T.color}">${T.name}</span> ${d.name} <span class="dt ${d.dtype === 'm' ? 'm' : 'p'}">${d.dtype === 'm' ? '마뎀' : '물뎀'}</span><small class="ms-n">${cnt}</small></div>` + stat + btns + '<!--CARD--><!--REC-->' + mk;
@@ -4356,6 +4407,20 @@ window.RENDER = window.RENDER2D;
     const mon = selMon != null ? enemyById(selMon) : null;
     const wisps = pl.wisps.map((n, t) => n ? mb('wisp', TIERS[t].name + ' 위습', '×' + n, { attrs: ` data-t="${t}"`, hot: true, off: !play }) : '').filter(Boolean).slice(0, 3).join('');
     if (!mon) return pl.draws ? `<div class="mc-g">${mb('draw', '랜덤 뽑기', '×' + pl.draws, { hot: true })}</div>` : ''; // 아무것도 안 골랐을 땐 건물·보급 패널 숨김
+    { // 몬스터·스토리 건물: 체력·방어력·마법 저항과 방깎 효과를 보여 줌
+      const isS = mon.kind === 'story' || mon.kind === 'chest';
+      const name = mon.kind === 'story' ? `스토리 ${mon.idx + 1}. ${STORIES[mon.idx].name}` : mon.kind === 'chest' ? '난파선 보물상자' : mon.boss ? `${mon.wave}웨이브 보스 · ${RD.waveInfo(mon.wave).name}` : `${mon.wave}웨이브 ${RD.waveInfo(mon.wave).name}`;
+      const arm = Math.max(0, Math.round(mon.armor - (mon.shred || 0))), mr = Math.max(0, Math.round((mon.mres || 0) - (mon.mshred || 0)));
+      const cut = (a) => Math.round(100 - 100 * CFG.armorK / (CFG.armorK + a)); // 피해가 몇 % 줄어드는지
+      const shredTxt = (mon.shred > 0 ? ` <small class="upp" style="color:#8ee05a">(원래 ${Math.round(mon.armor)} · 방깎 -${Math.round(mon.shred)})</small>` : '');
+      const mshTxt = (mon.mshred > 0 ? ` <small class="upp" style="color:#8ee05a">(원래 ${Math.round(mon.mres || 0)} · 마깎 -${Math.round(mon.mshred)})</small>` : '');
+      const tip = arm >= 40 || mr >= 40 ? `<div class="mc-tip">💡 ${arm >= mr ? '방어력' : '마법 저항'}이 높아요 · ${arm >= mr ? '방깎' : '마깎'} 선원이나 ${arm >= mr ? '마법' : '물리'} 피해 선원이 유리해요</div>` : '';
+      const rw = mon.kind === 'story' ? `<div class="mc-rw">격파 보상 · ${fmtReward(STORIES[mon.idx].reward)}</div>` : '';
+      return `<div class="mc-h">${name}</div>
+        <div class="mc-bar"><i style="width:${Math.max(0, mon.hp / mon.maxHp * 100).toFixed(1)}%"></i></div>
+        <div class="mc-st"><span class="hp">체력<b>${fmt(Math.max(0, Math.ceil(mon.hp)))} / ${fmt(mon.maxHp)}</b></span><span>방어력<b>${arm}${shredTxt}</b><i>물리 피해 -${cut(arm)}%</i></span><span>마법 저항<b>${mr}${mshTxt}</b><i>마법 피해 -${cut(mr)}%</i></span></div>
+        ${tip}${rw}<small class="mc-hint">선원을 고른 뒤 이 ${isS ? '건물' : '몬스터'}를 누르면(우클릭) 집중 공격해요</small>`;
+    }
     return `<div class="mc-h">${mon ? (mon.kind === 'story' ? STORIES[mon.idx].name : mon.boss ? '보스' : '몬스터') + ` · 체력 ${fmt(Math.max(0, Math.ceil(mon.hp)))}` : '건물 · 보급'}</div><div class="mc-g">${mb('selb', '강화소', '', { attrs: ' data-k="upgrade"' })}${mb('selb', '💰골드 도박', '', { attrs: ' data-k="ggold"' })}${mb('selb', '🎲유닛 도박', '', { attrs: ' data-k="gunit"' })}${mb('selb', '✨위습 제단', '×' + pl.wisps.reduce((a, b) => a + b, 0), { attrs: ' data-k="wisp"', hot: pl.wisps.some(n => n > 0) })}${pl.draws ? mb('draw', '랜덤 뽑기', '×' + pl.draws, { hot: true }) : ''}${mb('gal', '🏛조합 광장', '')}${mb('mview', '내 라인', '', { attrs: ' data-v="lane"' })}${mb('mview', '스토리존', '', { attrs: ' data-v="story"' })}</div>`;
   }
   // ---- 맨 아래 조합 막대 (원랜디처럼): 등급 낮은 것부터 왼쪽에, 지금 가진 재료 수 표시 ----
@@ -4633,6 +4698,7 @@ window.RENDER = window.RENDER2D;
   window.__tse = (e) => toScreenEv(e);
   window.__view = view;
   window.__selU = (id) => { selIds = [id]; selMon = null; mcardSig = null; };
+  window.__selM = (id) => { selMon = id; selIds = []; mcardSig = null; };
   window.__ts = (x, y) => toScreen(x, y, 12); window.__sel = () => selIds.map(i => S.units.find(u => u.id === i)?.type);
   window.__net = () => NET;
   window.__vw = () => [VW, VH];
