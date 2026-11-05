@@ -3010,12 +3010,15 @@ window.RENDER = window.RENDER2D;
   function lookAt(x, y) { view.x = x; view.y = y; clampView(); }
   function fitDeck() { // 휴대폰 세로: 갑판 양 끝 건물(도박장·강화소)이 화면 안에 들어오도록 줌을 맞춤
     const g = GEO[ME], st = RD.STATIONS[ME];
+    if (MOBILE && R.zoomRange[0] > 0.3) R.zoomRange[0] = 0.3; // 휴대폰은 더 멀리 축소할 수 있게
+    view.z = 1.2;
     for (let k = 0; k < 30; k++) {
       lookAt(g.cx, g.cy + 20);
       const a = toScreen(st.ggold.x - 34, st.ggold.y, 0), b = toScreen(st.upgrade.x + 34, st.upgrade.y, 0);
       if ((a.x >= 4 && b.x <= VW - 4 && Math.min(a.x, b.x) >= 4) || view.z <= R.zoomRange[0] + 1e-3) break;
       view.z = Math.max(R.zoomRange[0], view.z * 0.94); $('zoomLbl').textContent = Math.round(view.z * 100) + '%';
     }
+    view.z = Math.max(R.zoomRange[0], view.z * 0.78); lookAt(g.cx, g.cy + 20); $('zoomLbl').textContent = Math.round(view.z * 100) + '%'; // 한 단계 더 멀리서 보기
   }
   function myLaneView() { const g = GEO[ME]; if (MOBILE) { fitDeck(); return; } lookAt(ME < 2 ? g.cx + 100 : g.cx - 100, g.cy + (ME % 2 ? -20 : 20)); }
   function storyView() { lookAt(STORY.cx, ME % 2 ? STORY.cy + 120 : STORY.cy - 120); }
