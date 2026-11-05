@@ -665,6 +665,10 @@ body.m .galback:not([hidden]) { top: calc(52px + env(safe-area-inset-top, 0px));
 .endcard.min .ec-body { display: none; }
 .endcard.min { gap: 6px; }
 body.m .endcard { top: 64px; }
+
+/* PC: 아래 조합 바(페이지 아래 조합표가 있음)와 확대/축소 버튼 묶음은 숨김 */
+body:not(.m) #mbar, body:not(.m) #mbPop { display: none !important; }
+.zoom { display: none !important; }
 </style>
 </head><body>
 <script>
