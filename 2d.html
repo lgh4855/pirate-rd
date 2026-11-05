@@ -687,6 +687,10 @@ body.pc .endcard { zoom: 1.3; }
 .ms-mk .mk-dt { font-style: normal; font-size: 0.9em; font-weight: 700; padding: 0 5px; border-radius: 5px; margin-left: 3px; color: #fff; }
 .ms-mk .mk-dt.p { background: #e2504a; }
 .ms-mk .mk-dt.m { background: #3b82f6; }
+/* 조합 버튼: 선원 카드 바로 오른쪽에 붙이고, 많으면 아래가 아니라 오른쪽으로 열을 늘림 (스크롤 없음) */
+#mrec:not([hidden]) { width: auto !important; max-height: none !important; overflow: visible !important; right: auto; padding: 4px; }
+#mrec .ms-mks { display: grid; grid-auto-flow: column; grid-template-rows: repeat(var(--rows, 3), auto); grid-auto-columns: 168px; gap: 4px; }
+#mrec .ms-mk { width: 168px; box-sizing: border-box; }
 </style>
 </head><body>
 <div class="wrap">
@@ -4625,6 +4629,7 @@ window.RENDER = window.RENDER2D;
         const [a, b = ''] = rest.split('<!--REC-->'); card.innerHTML = a;
         const rp = document.getElementById('mrec'); if (rp && !recTouch) { const keep = rp.dataset.sig === b ? null : rp.scrollTop; if (rp.dataset.sig !== b) { rp.innerHTML = b; rp.dataset.sig = b; if (keep != null && b.split('조합법 · ')[1]?.slice(0, 12) === rp.dataset.head) rp.scrollTop = keep; else rp.scrollTop = 0; rp.dataset.head = (b.split('조합법 · ')[1] || '').slice(0, 12); } rp.dataset.has = b ? '1' : ''; }
         const sp = document.getElementById('mstat'); if (sp) { sp.innerHTML = st; sp.dataset.has = st ? '1' : ''; }
+        placeRec();
         if (!recTouch) mcardSig = h;
       }
       const base = !started || !$('ov').hidden;
@@ -4632,7 +4637,7 @@ window.RENDER = window.RENDER2D;
       card.hidden = base || !card.innerHTML.trim() || inPlaza;
       const gb = document.getElementById('galBack'); if (gb) gb.hidden = base || !inPlaza;
       const rp = document.getElementById('mrec'); if (rp) rp.hidden = base || inPlaza || !rp.dataset.has || document.body.classList.contains('m-menu');
-      const sp = document.getElementById('mstat'); if (sp) sp.hidden = base || inPlaza || !sp.dataset.has;
+      const sp = document.getElementById('mstat'); if (sp) sp.hidden = base || inPlaza || !sp.dataset.has; placeRec();
       mBar(base, inPlaza); if (base) { const g = document.getElementById('gal'); if (g) g.hidden = true; } else renderGal();
     }
     const hud = document.getElementById('mhud'); if (hud) hud.hidden = !started;
@@ -4695,6 +4700,18 @@ window.RENDER = window.RENDER2D;
     showEndCard(won ? '항해 성공!' : '배가 침몰했습니다', $('ovText').textContent, won ? '#f4bf3c' : '#ff6a5c', true);
   }
   let endedFor = null;
+  // 조합 버튼 패널을 선원 카드 오른쪽에 붙이고, 화면 폭에 맞춰 줄 수를 정함
+  function placeRec() {
+    const sp = document.getElementById('mstat'), rp = document.getElementById('mrec'); if (!sp || !rp) return;
+    const n = rp.querySelectorAll('.ms-mk').length; if (!n || sp.hidden || !sp.innerHTML) return;
+    const z = parseFloat(getComputedStyle(sp).zoom) || 1, host = rp.offsetParent || rp.parentElement, hb = host.getBoundingClientRect(), sb = sp.getBoundingClientRect();
+    const left = (sb.right - hb.left) / z + 4, top = (sb.top - hb.top) / z;
+    const colW = 172, avail = (hb.width / z) - left - 6, cols = Math.max(1, Math.floor((avail - 8) / colW));
+    const fit = Math.max(1, Math.floor(((sb.height / z) - 8) / 50));
+    const rows = Math.max(fit, Math.ceil(n / cols));
+    const L = left + 'px', T = top + 'px'; if (rp.style.left !== L) rp.style.left = L; if (rp.style.top !== T) rp.style.top = T; if (rp.style.getPropertyValue('--rows') != rows) rp.style.setProperty('--rows', rows);
+  }
+  addEventListener('resize', () => setTimeout(placeRec, 50));
   function rosterHtml(p) {
     const cnt = {}; for (const u of S.units) if (u.owner === p) cnt[u.type] = (cnt[u.type] || 0) + 1;
     const list = Object.keys(cnt).sort((a, b) => UNITS[b].tier - UNITS[a].tier || cnt[b] - cnt[a]);
