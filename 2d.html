@@ -1365,6 +1365,8 @@ const RD = (() => {
   for (const k in UNITS) { const u = UNITS[k]; delete u.slow; if (SLOW_AURA[k]) u.slowAura = SLOW_AURA[k]; else if (u.roles && !(u.skill && u.skill.slow)) { u.roles = u.roles.filter(r => r !== '감속'); if (!u.roles.length) u.roles = [u.kind === 'single' ? '단일' : '광역']; } }
   // 방깎·마깎 오라: 사거리 안 모든 적의 방어력/마법 저항을 항상 깎음 (가장 센 오라 하나만). 기존 누적 최대치를 오라 수치로 사용
   for (const k in UNITS) { const u = UNITS[k]; if (u.shred) { u.shredAura = u.shred[1]; delete u.shred; } if (u.mshred) { u.mshredAura = u.mshred[1]; delete u.mshred; } }
+  // 보스·건물 킬러(스토리 잘 깨는 선원): 공격 간격 30% 단축(공속 약 1.43배), 한 방 피해는 15% 낮춰 DPS는 약 +21%
+  for (const k in UNITS) { const u = UNITS[k]; if (u.bossMul) { u.cd = +(u.cd * 0.7).toFixed(3); u.dmg = Math.round(u.dmg * 0.85); } }
   // 스킬 기절(서리 폭발·낙뢰 기절): 모두 30% 확률, 기절 시간은 등급에 따라 1초 ~ 2초 (시간 정지는 별도)
   const STUN_DUR = { 1: 1.0, 2: 1.0, 3: 1.2, 5: 1.4, 4: 1.4, 6: 1.6, 7: 1.8, 8: 2.0 };
   for (const k in UNITS) { const sk = UNITS[k].skill; if (!sk) continue; const d = STUN_DUR[UNITS[k].tier] || 1.0;
