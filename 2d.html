@@ -671,7 +671,9 @@ body:not(.m) #mbar, body:not(.m) #mbPop, body.pc #mbar, body.pc #mbPop { display
 .zoom { display: none !important; }
 /* PC 창에서는 맵 안 지표·카드를 조금 크게 */
 body.pc .mhud { zoom: 1.55; }
-body.pc #mstat, body.pc #mrec, body.pc #mcard, body.pc .gal, body.pc .galback { zoom: 1.5; }
+body.pc #mstat, body.pc #mrec { zoom: 0.8; }
+body.m:not(.pc) #mstat, body.m:not(.pc) #mrec { zoom: 0.8; }
+body.pc #mcard, body.pc .gal, body.pc .galback { zoom: 1.5; }
 body.pc .endcard { zoom: 1.3; }
 .mcard .mc-bar { height: 7px; border-radius: 4px; background: rgba(255,255,255,0.12); overflow: hidden; margin: 4px 0 6px; }
 .mcard .mc-bar i { display: block; height: 100%; background: #ff6a5c; }
@@ -691,6 +693,8 @@ body.pc .endcard { zoom: 1.3; }
 #mrec:not([hidden]) { width: auto !important; max-height: none !important; overflow: visible !important; right: auto; padding: 4px; }
 #mrec .ms-mks { display: grid; grid-auto-flow: column; grid-template-rows: repeat(var(--rows, 3), auto); grid-auto-columns: 168px; gap: 4px; }
 #mrec .ms-mk { width: 168px; box-sizing: border-box; }
+/* 선원 카드·조합 버튼은 맵 아래쪽(왼쪽 아래)에 붙여서 갑판을 가리지 않게 */
+#mstat:not([hidden]) { top: auto !important; bottom: calc(var(--barh, 0px) + 8px + env(safe-area-inset-bottom, 0px)); }
 </style>
 </head><body>
 <div class="wrap">
@@ -4705,8 +4709,9 @@ window.RENDER = window.RENDER2D;
     const sp = document.getElementById('mstat'), rp = document.getElementById('mrec'); if (!sp || !rp) return;
     const n = rp.querySelectorAll('.ms-mk').length; if (!n || sp.hidden || !sp.innerHTML) return;
     const z = parseFloat(getComputedStyle(sp).zoom) || 1, host = rp.offsetParent || rp.parentElement, hb = host.getBoundingClientRect(), sb = sp.getBoundingClientRect();
-    const left = (sb.right - hb.left) / z + 4, top = (sb.top - hb.top) / z;
-    const colW = 172, avail = (hb.width / z) - left - 6, cols = Math.max(1, Math.floor((avail - 8) / colW));
+    const bar = document.getElementById('mbar'), bh = bar && !bar.hidden && getComputedStyle(bar).display !== 'none' ? bar.offsetHeight : 0; if (sp.style.getPropertyValue('--barh') !== bh + 'px') sp.style.setProperty('--barh', bh / z + 'px');
+    const left = (sb.right - hb.left) / z + 4, top = (sb.bottom - hb.top) / z - rp.offsetHeight;
+    const mmL = MM.x * hb.width / VW / z, colW = 172, avail = Math.min(hb.width / z, mmL) - left - 6, cols = Math.max(1, Math.floor((avail - 8) / colW));
     const fit = Math.max(1, Math.floor(((sb.height / z) - 8) / 50));
     const rows = Math.max(fit, Math.ceil(n / cols));
     const L = left + 'px', T = top + 'px'; if (rp.style.left !== L) rp.style.left = L; if (rp.style.top !== T) rp.style.top = T; if (rp.style.getPropertyValue('--rows') != rows) rp.style.setProperty('--rows', rows);
