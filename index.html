@@ -695,6 +695,10 @@ body.pc .endcard { zoom: 1.3; }
 #mrec .ms-mk { width: 168px; box-sizing: border-box; }
 /* 선원 카드·조합 버튼은 맵 아래쪽(왼쪽 아래)에 붙여서 갑판을 가리지 않게 */
 #mstat:not([hidden]) { top: auto !important; bottom: calc(var(--barh, 0px) + 8px + env(safe-area-inset-bottom, 0px)); }
+.endcard .ec-row { display: flex; gap: 8px; align-items: flex-start; margin-bottom: 4px; }
+.endcard .ec-t { flex: none; width: 46px; font-size: 12px; padding-top: 5px; }
+.endcard .ec-row .ec-list { flex: 1; }
+.endcard .ec-hint { font-size: 11px; color: #9fb4c0; }
 </style>
 </head><body>
 <script>
@@ -1562,10 +1566,11 @@ const RD = (() => {
   function removeUnits(s, ids) { const set = new Set(ids); s.units = s.units.filter(u => !set.has(u.id)); }
 
   // ---- 액션: 모든 입력은 {type, p, ...} 하나로. 멀티플레이 때 이것만 주고받습니다 ----
+  const POST_OK = { move: 1, amove: 1, patrol: 1, stop: 1, hold: 1, arrange: 1 }; // 게임이 끝난 뒤에도 선원을 움직여 볼 수 있음
   function dispatch(s, a) {
-    if (s.phase !== 'play') return false;
+    if (s.phase !== 'play' && !((s.phase === 'won' || s.phase === 'lost') && POST_OK[a.type])) return false;
     const p = a.p | 0, pl = s.players[p];
-    if (!pl || !pl.alive) return false;
+    if (!pl || (!pl.alive && s.phase === 'play')) return false;
     switch (a.type) {
       case 'summon': { // 소환소는 없앰 (돈으로 선원을 사지 못함)
         return false;
@@ -1857,6 +1862,7 @@ const RD = (() => {
       }
     });
   }
+  function stepPost(s, dt) { if (s.phase === 'won' || s.phase === 'lost') { s.t += dt; moveUnits(s, dt); } } // 끝난 뒤: 이동만
   function step(s, dt) {
     if (s.phase !== 'play') return;
     flushWisps(s);
@@ -2008,7 +2014,7 @@ const RD = (() => {
   }
 
   return { WORLD, LANE, GEO, STORY, PCOLORS, PNAMES, CFG, TIERS, UNITS, RECIPES, BY_TIER, STORIES, CHEST, DRAW_POOL,
-    create, dispatch, step, combinable, recipeUnits, recipeHave, usesOf, unitById, pathPos, hpFor, isBossWave, waveInfo, segOf, SEG_NAMES,
+    create, dispatch, step, stepPost, combinable, recipeUnits, recipeHave, usesOf, unitById, pathPos, hpFor, isBossWave, waveInfo, segOf, SEG_NAMES,
     dmgMul, spdMul, upTrackOf, SHIPS, globalAtk, auraAspd, countOf, nextReq, wispSpots, PADS, STATIONS, ISLAND, zoneOf, zoneAt, isFree, deckBox };
 })();
 if (typeof module !== 'undefined') module.exports = RD;
@@ -4114,7 +4120,7 @@ window.RENDER = window.RENDER2D;
   function say(t) { $('log').textContent = t; const ml = document.getElementById('mlog'); if (ml) { ml.textContent = t; mlogT = performance.now() + 2600; } }
   function act(a) {
     if (!S) return false; a.p = ME;
-    if (NET.on) { const ok = netAct(a); updateHud(); return ok; }
+    if (NET.on && S.phase === 'play') { const ok = netAct(a); updateHud(); return ok; } // 끝난 뒤 이동은 내 화면에서만
     const ok = RD.dispatch(S, a); drainEvents(); updateHud(); return ok;
   }
   // 새로 생긴 선원 선택 (멀티에서는 실제로 실행된 뒤 선택)
@@ -4330,7 +4336,7 @@ window.RENDER = window.RENDER2D;
   $('viewStory').onclick = storyView;
   function togglePause() { if (!S || S.phase !== 'play') return; if (NET.on) { say('실시간 게임에서는 일시정지할 수 없어요.'); return; } paused = !paused; $('pauseBtn').textContent = paused ? '계속' : '일시정지'; if (paused && document.pointerLockElement) document.exitPointerLock?.(); }
   function cmd(c) {
-    if (!S || S.phase !== 'play') return;
+    if (!S || !(S.phase === 'play' || S.phase === 'won' || S.phase === 'lost')) return;
     if (c === 'stop' || c === 'hold') { if (selIds.length) act({ type: c, ids: selIds }); tmode = null; }
     else if (selIds.length) tmode = c;
     updateHud();
@@ -5653,6 +5659,7 @@ window.RENDER = window.RENDER2D;
     const EDGE = locked ? 6 : 22;
     if (hover && !(drag && !locked) && !inMinimap(hover)) { if (hover.x < EDGE) px -= 1; if (hover.x > VW - EDGE) px += 1; if (hover.y < EDGE) py -= 1; if (hover.y > VH - EDGE) py += 1; }
     if (px || py) panScreen(px * 700 * rdt, py * 700 * rdt);
+    if (S && started && !paused && (S.phase === 'won' || S.phase === 'lost')) RD.stepPost(S, rdt);
     if (running) {
       if (NET.on) netFrame(dt);
       else { acc += dt; const STEP = 1 / 30; while (acc >= STEP) { RD.step(S, STEP); acc -= STEP; drainEvents(); } }
@@ -5686,7 +5693,7 @@ window.RENDER = window.RENDER2D;
     if (endedFor === S) return; endedFor = S;
     if (document.pointerLockElement) document.exitPointerLock?.();
     const won = S.phase === 'won';
-    $('ovTitle').textContent = won ? '항해 성공!' : '배가 침몰했습니다';
+    selIds = []; $('ovTitle').textContent = won ? '항해 성공!' : '배가 침몰했습니다';
     const cc = won ? countClear() : null;
     $('ovText').textContent = won ? `40웨이브를 모두 막아냈습니다. 스토리 ${S.storyIdx}개 격파, 처치 ${S.players[ME].kills}마리.${cc ? ` 클리어 ${myClears()}회째!${cc.up ? ` 칭호 승급: ${cc.after.name}!` : ` ${cc.after.nextName}까지 ${cc.after.next}회`}` : ''}` : `${S.lostReason}. ${S.wave}웨이브, 스토리 ${S.storyIdx}개 격파.`;
     if (cc && cc.up) showBanner('승급!', cc.after.color, `새 칭호: ${cc.after.name}`);
@@ -5713,12 +5720,13 @@ window.RENDER = window.RENDER2D;
     const cnt = {}; for (const u of S.units) if (u.owner === p) cnt[u.type] = (cnt[u.type] || 0) + 1;
     const list = Object.keys(cnt).sort((a, b) => UNITS[b].tier - UNITS[a].tier || cnt[b] - cnt[a]);
     if (!list.length) return '<small class="ec-none">남은 선원이 없어요</small>';
-    return list.slice(0, 14).map(t => `<span class="ec-u" style="--tc:${TIERS[UNITS[t].tier].color}">${badge(t, 'mini')}<b>${UNITS[t].name}</b>${cnt[t] > 1 ? `<i>×${cnt[t]}</i>` : ''}</span>`).join('') + (list.length > 14 ? `<small class="ec-none">외 ${list.length - 14}종</small>` : '');
+    const order = [9, 8, 7, 6, 4, 5, 3, 2, 1, 0]; // 높은 등급부터 (전설 다음 히든)
+    return order.filter(tr => list.some(t => UNITS[t].tier === tr)).map(tr => `<div class="ec-row"><b class="ec-t" style="color:${TIERS[tr].color}">${TIERS[tr].name}</b><div class="ec-list">${list.filter(t => UNITS[t].tier === tr).map(t => `<span class="ec-u" style="--tc:${TIERS[tr].color}">${badge(t, 'mini')}<b>${UNITS[t].name}</b>${cnt[t] > 1 ? `<i>×${cnt[t]}</i>` : ''}</span>`).join('')}</div></div>`).join('');
   }
   function showEndCard(title, text, color, canExit) {
     const c = $('endCard'); if (!c) return;
     $('ecTitle').textContent = title; $('ecTitle').style.color = color; $('ecText').textContent = text;
-    $('ecRoster').innerHTML = `<div class="ec-sub">내 선원 · 처치 ${S.players[ME] ? S.players[ME].kills : 0}마리</div><div class="ec-list">${rosterHtml(ME)}</div>`;
+    $('ecRoster').innerHTML = `<div class="ec-sub">내 선원 (등급별) · 처치 ${S.players[ME] ? S.players[ME].kills : 0}마리</div>${rosterHtml(ME)}${canExit ? '<div class="ec-hint">게임은 끝났지만 선원을 고르고 움직여 볼 수 있어요 · ▾로 이 창을 접고, 원할 때 나가기를 누르세요</div>' : ''}`;
     $('ecExit').disabled = !canExit; $('ecExit').textContent = canExit ? '나가기' : '게임이 끝나면 나갈 수 있어요';
     c.classList.remove('min'); c.hidden = false;
   }
@@ -5732,6 +5740,7 @@ window.RENDER = window.RENDER2D;
   window.__view = view;
   window.__selU = (id) => { selIds = [id]; selMon = null; mcardSig = null; };
   window.__setSel = (a) => { selIds = a.slice(); selMon = null; mcardSig = null; };
+  window.__endNow = () => endGame();
   window.__selM = (id) => { selMon = id; selIds = []; mcardSig = null; };
   window.__ts = (x, y) => toScreen(x, y, 12); window.__sel = () => selIds.map(i => S.units.find(u => u.id === i)?.type);
   window.__net = () => NET;
