@@ -1363,6 +1363,8 @@ const RD = (() => {
   // 흔함·특별함 선원은 감속 없음. 얼음 항해사 20% 기준으로 등급마다 +12%
   const SLOW_AURA = { frost: 0.20, dancer: 0.32, tide: 0.32, witch: 0.44, glacier: 0.44, leviathan: 0.56, abyssgod: 0.68, whaleking: 0.68, worldsea: 0.80 };
   for (const k in UNITS) { const u = UNITS[k]; delete u.slow; if (SLOW_AURA[k]) u.slowAura = SLOW_AURA[k]; else if (u.roles && !(u.skill && u.skill.slow)) { u.roles = u.roles.filter(r => r !== '감속'); if (!u.roles.length) u.roles = [u.kind === 'single' ? '단일' : '광역']; } }
+  // 방깎·마깎 오라: 사거리 안 모든 적의 방어력/마법 저항을 항상 깎음 (가장 센 오라 하나만). 기존 누적 최대치를 오라 수치로 사용
+  for (const k in UNITS) { const u = UNITS[k]; if (u.shred) { u.shredAura = u.shred[1]; delete u.shred; } if (u.mshred) { u.mshredAura = u.mshred[1]; delete u.mshred; } }
   // 스킬 기절(서리 폭발·낙뢰 기절): 모두 30% 확률, 기절 시간은 등급에 따라 1초 ~ 2초 (시간 정지는 별도)
   const STUN_DUR = { 1: 1.0, 2: 1.0, 3: 1.2, 5: 1.4, 4: 1.4, 6: 1.6, 7: 1.8, 8: 2.0 };
   for (const k in UNITS) { const sk = UNITS[k].skill; if (!sk) continue; const d = STUN_DUR[UNITS[k].tier] || 1.0;
@@ -1721,7 +1723,7 @@ const RD = (() => {
     if (m.hp <= 0) return 0;
     const isStruct = !!m.kind && (m.kind === 'story' || m.kind === 'chest');
     let d = dmg * ((m.boss || isStruct) && def.bossMul ? def.bossMul : 1);
-    const arm = def.dtype === 'm' ? Math.max(0, (m.mres || 0) - (m.mshred || 0)) : Math.max(0, m.armor - m.shred);
+    const arm = def.dtype === 'm' ? Math.max(0, (m.mres || 0) - (m.mshred || 0) - (m.aMs || 0)) : Math.max(0, m.armor - m.shred - (m.aSh || 0));
     d = d * CFG.armorK / (CFG.armorK + arm);
     if (opt && opt.raw) d += opt.raw; // 체력% 피해는 방어 무시
     m.hp -= d; m.hitT = 0.12;
@@ -1880,9 +1882,12 @@ const RD = (() => {
     }
 
     const AU = s.units.filter(u => UNITS[u.type].slowAura && s.players[u.owner] && s.players[u.owner].alive);
+    const SH = s.units.filter(u => (UNITS[u.type].shredAura || UNITS[u.type].mshredAura) && s.players[u.owner] && s.players[u.owner].alive);
+    const shredAura = (m) => { let a = 0, b = 0; for (const u of SH) { const d = UNITS[u.type], dx = m.x - u.x, dy = m.y - u.y; if (dx * dx + dy * dy > d.range * d.range) continue; if ((d.shredAura || 0) > a) a = d.shredAura; if ((d.mshredAura || 0) > b) b = d.mshredAura; } m.aSh = a; m.aMs = b; };
+    for (const t of s.structs) shredAura(t);
     for (const m of s.monsters) {
       let a = 0; for (const u of AU) { const d = UNITS[u.type], dx = m.x - u.x, dy = m.y - u.y; if (d.slowAura > a && dx * dx + dy * dy <= d.range * d.range) a = d.slowAura; }
-      m.auraSlow = a * (m.boss ? 0.5 : 1);
+      m.auraSlow = a * (m.boss ? 0.5 : 1); shredAura(m);
       if (m.hitT > 0) m.hitT -= dt;
       if (m.shredT > 0) { m.shredT -= dt; if (m.shredT <= 0) m.shred = 0; }
       if (m.mshredT > 0) { m.mshredT -= dt; if (m.mshredT <= 0) m.mshred = 0; }
@@ -2758,7 +2763,7 @@ window.RENDER2D = (() => {
     ctx.fillStyle = '#2a1a10'; ctx.beginPath(); ctx.roundRect(-11, -30, 22, 30, [11, 11, 0, 0]); ctx.fill();
     const fy = -40 - 90 - lv * 5 - 32; ctx.strokeStyle = '#3a2a1a'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(0, fy + 6); ctx.lineTo(0, fy - 26); ctx.stroke();
     ctx.fillStyle = '#ff5a4f'; ctx.beginPath(); ctx.moveTo(0, fy - 26); for (let k = 0; k <= 8; k++) ctx.lineTo(k * 3.5, fy - 26 + Math.sin(clock * 6 - k * 0.7) * 2.5 * k / 8); for (let k = 8; k >= 0; k--) ctx.lineTo(k * 3.5, fy - 12 + Math.sin(clock * 6 - k * 0.7) * 2.5 * k / 8); ctx.closePath(); ctx.fill();
-    if (t.shred > 0) { ctx.strokeStyle = '#8ee05a'; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.moveTo(-34, -46); ctx.lineTo(-24, -30); ctx.lineTo(-30, -14); ctx.moveTo(30, -44); ctx.lineTo(22, -26); ctx.stroke(); }
+    if (t.shred > 0 || t.aSh > 0) { ctx.strokeStyle = '#8ee05a'; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.moveTo(-34, -46); ctx.lineTo(-24, -30); ctx.lineTo(-30, -14); ctx.moveTo(30, -44); ctx.lineTo(22, -26); ctx.stroke(); }
     ctx.restore();
     // 이름·체력
     ctx.textAlign = 'center'; ctx.font = `15px ${G.DF}`; ctx.lineWidth = 4; ctx.strokeStyle = '#0b1620';
@@ -2896,7 +2901,7 @@ window.RENDER2D = (() => {
     if (m.kind === 'armored' && sg >= 2) { ctx.fillStyle = sg === 3 ? '#3a2a4a' : '#8a2a1a'; for (let k = -1; k <= 1; k++) { ctx.beginPath(); ctx.moveTo(x + k * R * 0.4 - 3, y - R * 1.6); ctx.lineTo(x + k * R * 0.45, y - R * 2.15); ctx.lineTo(x + k * R * 0.4 + 3, y - R * 1.6); ctx.fill(); } }
     ctx.lineCap = 'butt';
     if (m.slowPct > 0 || m.auraSlow > 0) { ctx.strokeStyle = '#9fe3ff'; ctx.lineWidth = 2; ctx.beginPath(); ctx.ellipse(x, y - R * 0.75, R + 2.5, R * 0.85 + 2.5, 0, 0, 7); ctx.stroke(); }
-    if (m.shred > 0 && m.kind !== 'armored') { ctx.fillStyle = '#8ee05a'; ctx.beginPath(); ctx.arc(x + R - 1, y - R * 1.5, 2.4, 0, 7); ctx.fill(); }
+    if ((m.shred > 0 || m.aSh > 0) && m.kind !== 'armored') { ctx.fillStyle = '#8ee05a'; ctx.beginPath(); ctx.arc(x + R - 1, y - R * 1.5, 2.4, 0, 7); ctx.fill(); }
     if (m.hitT > 0) { ctx.save(); ctx.globalCompositeOperation = 'lighter'; ctx.fillStyle = 'rgba(255,255,255,0.5)'; ctx.beginPath(); ctx.ellipse(x, y - R * 0.75, R, R * 0.85, 0, 0, 7); ctx.fill(); ctx.restore(); }
     if (m.stunT > 0) stars(x, y - R * 1.9, R);
     if (m.hp < m.maxHp) hpbar(x, y - R * 2.2, 24 * s, m.hp / m.maxHp, m.kind === 'armored' ? '#c9d4de' : '#59d6a4', 3.5);
@@ -3664,8 +3669,8 @@ window.RENDER = window.RENDER2D;
   function abilList(d) {
     const L = [], sk = d.skill;
     if (d.slowAura) L.push(['이감 오라', `사거리 ${d.range} 안 모든 적 이동속도 -${pc(d.slowAura)} (항상, 보스는 절반 · 가장 센 오라 하나만)`]);
-    if (d.shred) L.push(['방깎', `공격마다 방어력 -${d.shred[0]} 누적 (최대 -${d.shred[1]}, ${d.shred[2]}초 유지)`]);
-    if (d.mshred) L.push(['마방깎', `공격마다 마법 저항 -${d.mshred[0]} 누적 (최대 -${d.mshred[1]}, ${d.mshred[2]}초 유지)`]);
+    if (d.shredAura) L.push(['방깎 오라', `사거리 ${d.range} 안 모든 적 방어력 -${d.shredAura} (항상 · 가장 센 오라 하나만)`]);
+    if (d.mshredAura) L.push(['마깎 오라', `사거리 ${d.range} 안 모든 적 마법 저항 -${d.mshredAura} (항상 · 가장 센 오라 하나만)`]);
     if (d.stun) L.push(['기절', `공격마다 ${pc(d.stun[0])} 확률로 ${d.stun[1]}초 스턴`]);
     if (d.crit) L.push(['치명', `${pc(d.crit[0])} 확률로 ${d.crit[1]}배 치명타`]);
     if (d.bossMul) L.push(['보스킬러', `보스·건물에 ${d.bossMul}배 피해`]);
@@ -3735,7 +3740,7 @@ window.RENDER = window.RENDER2D;
     else if (mon) {
       const isS = mon.kind === 'story' || mon.kind === 'chest';
       const name = mon.kind === 'story' ? `${mon.idx + 1}. ${STORIES[mon.idx].name}` : mon.kind === 'chest' ? '난파선 보물상자' : mon.boss ? `${mon.wave}웨이브 보스 · ${RD.waveInfo(mon.wave).name}` : `${mon.wave}웨이브 ${RD.waveInfo(mon.wave).name}`;
-      const st = [mon.slowPct > 0 ? `감속 ${Math.round(mon.slowPct * 100)}%` : '', mon.stunT > 0 ? '기절' : '', mon.shred > 0 ? `방깎 -${Math.round(mon.shred)}` : ''].filter(Boolean).join(' · ');
+      const st = [mon.slowPct > 0 ? `감속 ${Math.round(mon.slowPct * 100)}%` : '', mon.stunT > 0 ? '기절' : '', (mon.shred + (mon.aSh || 0)) > 0 ? `방깎 -${Math.round(mon.shred + (mon.aSh || 0))}` : ''].filter(Boolean).join(' · ');
       html = `<div class="name">${name}</div>
         <div class="meter mon"><i style="width:${Math.max(0, mon.hp / mon.maxHp * 100).toFixed(1)}%"></i></div>
         <div class="specs"><div>체력<b>${fmt(Math.max(0, Math.ceil(mon.hp)))}</b></div><div>최대<b>${fmt(mon.maxHp)}</b></div><div>방어력<b>${Math.max(0, Math.round(mon.armor - mon.shred))}</b></div><div>마법 저항<b>${Math.max(0, Math.round((mon.mres || 0) - (mon.mshred || 0)))}</b></div></div>
@@ -3779,7 +3784,7 @@ window.RENDER = window.RENDER2D;
     const t = S.structs.find(x => x.kind === 'story');
     const chest = S.structs.find(x => x.kind === 'chest');
     const req = RD.nextReq(S);
-    const sig = [S.storyIdx, t ? Math.ceil(t.hp / t.maxHp * 200) : -1, t ? Math.max(0, t.armor - t.shred) : 0, chest ? Math.ceil(chest.hp / chest.maxHp * 50) : -1, req ? req.wave + ':' + req.need : '', S.wave].join('|');
+    const sig = [S.storyIdx, t ? Math.ceil(t.hp / t.maxHp * 200) : -1, t ? Math.max(0, t.armor - t.shred - (t.aSh || 0)) : 0, chest ? Math.ceil(chest.hp / chest.maxHp * 50) : -1, req ? req.wave + ':' + req.need : '', S.wave].join('|');
     if (sig === storySig) return; storySig = sig;
     let html = '';
     if (t) {
@@ -3938,7 +3943,7 @@ window.RENDER = window.RENDER2D;
       ctx.fillStyle = 'rgba(10,26,38,0.85)'; rr(x - 6, y - 22, w + 12, 40, 8); ctx.fill();
       ctx.fillStyle = '#e6eef2'; ctx.font = `13px ${DF}`;
       const left = Math.max(0, CFG.bossTime - Math.max(0, pl.bossT));
-      ctx.fillText(`${S.wave}웨이브 보스 · 방어력 ${Math.max(0, bossM.armor - bossM.shred)} · 남은 ${left.toFixed(0)}초${pl.bossT <= CFG.fastBoss.t ? ' · 빠른 처치 가능' : ''}`, x, y - 6);
+      ctx.fillText(`${S.wave}웨이브 보스 · 방어력 ${Math.max(0, Math.round(bossM.armor - bossM.shred - (bossM.aSh || 0)))} · 남은 ${left.toFixed(0)}초${pl.bossT <= CFG.fastBoss.t ? ' · 빠른 처치 가능' : ''}`, x, y - 6);
       ctx.fillStyle = '#3b1414'; ctx.fillRect(x, y, w, 8);
       ctx.fillStyle = '#ff6a5c'; ctx.fillRect(x, y, w * Math.max(0, bossM.hp / bossM.maxHp), 8);
     }
@@ -4455,10 +4460,10 @@ window.RENDER = window.RENDER2D;
     { // 몬스터·스토리 건물: 체력·방어력·마법 저항과 방깎 효과를 보여 줌
       const isS = mon.kind === 'story' || mon.kind === 'chest';
       const name = mon.kind === 'story' ? `스토리 ${mon.idx + 1}. ${STORIES[mon.idx].name}` : mon.kind === 'chest' ? '난파선 보물상자' : mon.boss ? `${mon.wave}웨이브 보스 · ${RD.waveInfo(mon.wave).name}` : `${mon.wave}웨이브 ${RD.waveInfo(mon.wave).name}`;
-      const arm = Math.max(0, Math.round(mon.armor - (mon.shred || 0))), mr = Math.max(0, Math.round((mon.mres || 0) - (mon.mshred || 0)));
+      const tsh = (mon.shred || 0) + (mon.aSh || 0), tms = (mon.mshred || 0) + (mon.aMs || 0), arm = Math.max(0, Math.round(mon.armor - tsh)), mr = Math.max(0, Math.round((mon.mres || 0) - tms));
       const cut = (a) => Math.round(100 - 100 * CFG.armorK / (CFG.armorK + a)); // 피해가 몇 % 줄어드는지
-      const shredTxt = (mon.shred > 0 ? ` <small class="upp" style="color:#8ee05a">(원래 ${Math.round(mon.armor)} · 방깎 -${Math.round(mon.shred)})</small>` : '');
-      const mshTxt = (mon.mshred > 0 ? ` <small class="upp" style="color:#8ee05a">(원래 ${Math.round(mon.mres || 0)} · 마깎 -${Math.round(mon.mshred)})</small>` : '');
+      const shredTxt = (tsh > 0 ? ` <small class="upp" style="color:#8ee05a">(원래 ${Math.round(mon.armor)} · 방깎 -${Math.round(tsh)})</small>` : '');
+      const mshTxt = (tms > 0 ? ` <small class="upp" style="color:#8ee05a">(원래 ${Math.round(mon.mres || 0)} · 마깎 -${Math.round(tms)})</small>` : '');
       const tip = arm >= 40 || mr >= 40 ? `<div class="mc-tip">💡 ${arm >= mr ? '방어력' : '마법 저항'}이 높아요 · ${arm >= mr ? '방깎' : '마깎'} 선원이나 ${arm >= mr ? '마법' : '물리'} 피해 선원이 유리해요</div>` : '';
       const rw = mon.kind === 'story' ? `<div class="mc-rw">격파 보상 · ${fmtReward(STORIES[mon.idx].reward)}</div>` : '';
       return `<div class="mc-h">${name}</div>
