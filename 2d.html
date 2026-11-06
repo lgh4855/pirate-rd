@@ -1363,9 +1363,11 @@ const RD = (() => {
   // 흔함·특별함 선원은 감속 없음. 얼음 항해사 20% 기준으로 등급마다 +12%
   const SLOW_AURA = { frost: 0.20, dancer: 0.32, tide: 0.32, witch: 0.44, glacier: 0.44, leviathan: 0.56, abyssgod: 0.68, whaleking: 0.68, worldsea: 0.80 };
   for (const k in UNITS) { const u = UNITS[k]; delete u.slow; if (SLOW_AURA[k]) u.slowAura = SLOW_AURA[k]; else if (u.roles && !(u.skill && u.skill.slow)) { u.roles = u.roles.filter(r => r !== '감속'); if (!u.roles.length) u.roles = [u.kind === 'single' ? '단일' : '광역']; } }
-  // 기본 공격 기절: 모두 30% 확률, 시간은 등급에 따라 1초(희귀·히든) ~ 2초(초월)
-  const STUN_DUR = { 3: 1.0, 5: 1.0, 4: 1.2, 6: 1.4, 7: 1.7, 8: 2.0 };
-  for (const k in UNITS) { const u = UNITS[k]; if (u.stun) u.stun = [0.3, STUN_DUR[u.tier] || 1.0]; }
+  // 스킬 기절(서리 폭발·낙뢰 기절): 모두 30% 확률, 기절 시간은 등급에 따라 1초 ~ 2초 (시간 정지는 별도)
+  const STUN_DUR = { 1: 1.0, 2: 1.0, 3: 1.2, 5: 1.4, 4: 1.4, 6: 1.6, 7: 1.8, 8: 2.0 };
+  for (const k in UNITS) { const sk = UNITS[k].skill; if (!sk) continue; const d = STUN_DUR[UNITS[k].tier] || 1.0;
+    if (sk.type === 'freeze') { sk.chance = 0.3; sk.dur = d; } else if (sk.stun) { sk.chance = 0.3; sk.stun = d; } else continue;
+    sk.desc = sk.desc.replace(/\d+% 확률/, '30% 확률').replace(/[\d.]+초 (기절|스턴)/, d + '초 $1'); }
   const BY_TIER = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9].map(t => Object.keys(UNITS).filter(k => UNITS[k].tier === t && !UNITS[k].excl && !UNITS[k].ship));
   const SHIPS = Object.keys(UNITS).filter(k => UNITS[k].ship && !UNITS[k].excl); // 조합으로 만드는 히든 배
   const DRAW_POOL = [['tide', 0.5], ['ghost', 0.22], ['dragon', 0.22], ['star', 0.06]];
