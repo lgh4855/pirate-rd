@@ -1359,6 +1359,10 @@ const RD = (() => {
   const MOVE_TYPES = { gale: 'fly', storm: 'fly', dragon: 'fly', star: 'fly', chrono: 'fly', frost: 'swim', witch: 'swim', abyss: 'swim', tide: 'swim', ghost: 'swim' };
   for (const k in MOVE_TYPES) if (UNITS[k]) UNITS[k].move = MOVE_TYPES[k];
   for (const k in UNITS) if (UNITS[k].tier === 0) UNITS[k].skill = null; // 흔함 선원은 고유 스킬 없음
+  // 이감 오라: 공격과 상관없이 사거리 안 몬스터를 계속 느리게 함 (가장 센 오라 하나만, 보스는 절반)
+  // 흔함·특별함 선원은 감속 없음. 얼음 항해사 20% 기준으로 등급마다 +12%
+  const SLOW_AURA = { frost: 0.20, dancer: 0.32, tide: 0.32, witch: 0.44, glacier: 0.44, leviathan: 0.56, abyssgod: 0.68, whaleking: 0.68, worldsea: 0.80 };
+  for (const k in UNITS) { const u = UNITS[k]; delete u.slow; if (SLOW_AURA[k]) u.slowAura = SLOW_AURA[k]; else if (u.roles && !(u.skill && u.skill.slow)) { u.roles = u.roles.filter(r => r !== '감속'); if (!u.roles.length) u.roles = [u.kind === 'single' ? '단일' : '광역']; } }
   const BY_TIER = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9].map(t => Object.keys(UNITS).filter(k => UNITS[k].tier === t && !UNITS[k].excl && !UNITS[k].ship));
   const SHIPS = Object.keys(UNITS).filter(k => UNITS[k].ship && !UNITS[k].excl); // 조합으로 만드는 히든 배
   const DRAW_POOL = [['tide', 0.5], ['ghost', 0.22], ['dragon', 0.22], ['star', 0.06]];
@@ -1870,13 +1874,16 @@ const RD = (() => {
       while (s.spawned < want) { s.players.forEach((pl, p) => { if (pl.alive) spawnMonster(s, p); }); s.spawned++; }
     }
 
+    const AU = s.units.filter(u => UNITS[u.type].slowAura && s.players[u.owner] && s.players[u.owner].alive);
     for (const m of s.monsters) {
+      let a = 0; for (const u of AU) { const d = UNITS[u.type], dx = m.x - u.x, dy = m.y - u.y; if (d.slowAura > a && dx * dx + dy * dy <= d.range * d.range) a = d.slowAura; }
+      m.auraSlow = a * (m.boss ? 0.5 : 1);
       if (m.hitT > 0) m.hitT -= dt;
       if (m.shredT > 0) { m.shredT -= dt; if (m.shredT <= 0) m.shred = 0; }
       if (m.mshredT > 0) { m.mshredT -= dt; if (m.mshredT <= 0) m.mshred = 0; }
       if (m.stunT > 0) { m.stunT -= dt; continue; }
       if (m.slowT > 0) { m.slowT -= dt; if (m.slowT <= 0) m.slowPct = 0; }
-      const v = m.speed * (1 - m.slowPct) * dt; m.d += v; m.trav += v;
+      const v = m.speed * (1 - Math.max(m.slowPct, m.auraSlow || 0)) * dt; m.d += v; m.trav += v;
       const pp = pathPos(m.lane, m.d); m.x = pp.x; m.y = pp.y;
     }
     for (const t of s.structs) { if (t.hitT > 0) t.hitT -= dt; if (t.shredT > 0) { t.shredT -= dt; if (t.shredT <= 0) t.shred = 0; } if (t.mshredT > 0) { t.mshredT -= dt; if (t.mshredT <= 0) t.mshred = 0; } }
@@ -2883,7 +2890,7 @@ window.RENDER2D = (() => {
     if (sg === 3) { ctx.fillStyle = '#2a1a3a'; for (const sd of [-1, 1]) { ctx.beginPath(); ctx.moveTo(x + sd * R * 0.35, y - R * 1.45); ctx.quadraticCurveTo(x + sd * R * 0.75, y - R * 1.9, x + sd * R * 0.6, y - R * 2.1); ctx.lineTo(x + sd * R * 0.15, y - R * 1.55); ctx.fill(); } }
     if (m.kind === 'armored' && sg >= 2) { ctx.fillStyle = sg === 3 ? '#3a2a4a' : '#8a2a1a'; for (let k = -1; k <= 1; k++) { ctx.beginPath(); ctx.moveTo(x + k * R * 0.4 - 3, y - R * 1.6); ctx.lineTo(x + k * R * 0.45, y - R * 2.15); ctx.lineTo(x + k * R * 0.4 + 3, y - R * 1.6); ctx.fill(); } }
     ctx.lineCap = 'butt';
-    if (m.slowPct > 0) { ctx.strokeStyle = '#9fe3ff'; ctx.lineWidth = 2; ctx.beginPath(); ctx.ellipse(x, y - R * 0.75, R + 2.5, R * 0.85 + 2.5, 0, 0, 7); ctx.stroke(); }
+    if (m.slowPct > 0 || m.auraSlow > 0) { ctx.strokeStyle = '#9fe3ff'; ctx.lineWidth = 2; ctx.beginPath(); ctx.ellipse(x, y - R * 0.75, R + 2.5, R * 0.85 + 2.5, 0, 0, 7); ctx.stroke(); }
     if (m.shred > 0 && m.kind !== 'armored') { ctx.fillStyle = '#8ee05a'; ctx.beginPath(); ctx.arc(x + R - 1, y - R * 1.5, 2.4, 0, 7); ctx.fill(); }
     if (m.hitT > 0) { ctx.save(); ctx.globalCompositeOperation = 'lighter'; ctx.fillStyle = 'rgba(255,255,255,0.5)'; ctx.beginPath(); ctx.ellipse(x, y - R * 0.75, R, R * 0.85, 0, 0, 7); ctx.fill(); ctx.restore(); }
     if (m.stunT > 0) stars(x, y - R * 1.9, R);
@@ -3651,7 +3658,7 @@ window.RENDER = window.RENDER2D;
   const pc = (x) => Math.round(x * 100) + '%';
   function abilList(d) {
     const L = [], sk = d.skill;
-    if (d.slow) L.push(['감속', `공격마다 이동속도 -${pc(d.slow[0])} ${d.slow[1]}초 (보스는 절반)`]);
+    if (d.slowAura) L.push(['이감 오라', `사거리 ${d.range} 안 모든 적 이동속도 -${pc(d.slowAura)} (항상, 보스는 절반 · 가장 센 오라 하나만)`]);
     if (d.shred) L.push(['방깎', `공격마다 방어력 -${d.shred[0]} 누적 (최대 -${d.shred[1]}, ${d.shred[2]}초 유지)`]);
     if (d.mshred) L.push(['마방깎', `공격마다 마법 저항 -${d.mshred[0]} 누적 (최대 -${d.mshred[1]}, ${d.mshred[2]}초 유지)`]);
     if (d.stun) L.push(['기절', `공격마다 ${pc(d.stun[0])} 확률로 ${d.stun[1]}초 스턴`]);
